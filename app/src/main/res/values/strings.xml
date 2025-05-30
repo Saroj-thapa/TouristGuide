@@ -4,4 +4,6 @@
     <string name="title_activity_sing_up">SingUp</string>
     <string name="title_activity_sign_up">SignUp</string>
     <string name="title_activity_home_screen">HomeScreen</string>
+    <string name="title_activity_forgot_password">ForgotPassword</string>
+    <string name="title_activity_forgotpassword">Forgotpassword</string>
 </resources>
