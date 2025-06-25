@@ -1,9 +1,4 @@
 <resources>
-    <string name="app_name">TouristGuide</string>
-    <string name="title_activity_login">LoginActivity</string>
-    <string name="title_activity_sing_up">SingUp</string>
-    <string name="title_activity_sign_up">SignUp</string>
-    <string name="title_activity_home_screen">HomeScreen</string>
-    <string name="title_activity_forgot_password">ForgotPassword</string>
-    <string name="title_activity_forgotpassword">Forgotpassword</string>
+    <string name="app_name">Explore Nepal</string>
+    <string name="title_activity_main2">MainActivity2</string>
 </resources>

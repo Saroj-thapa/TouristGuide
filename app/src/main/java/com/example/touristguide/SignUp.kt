@@ -19,6 +19,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -38,6 +40,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 
@@ -60,7 +63,8 @@ fun SignUpBody() {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
-
+    var passwordVisibility by remember {
+        mutableStateOf(false) }
 
     val fieldModifier = Modifier
         .fillMaxWidth()
@@ -153,18 +157,36 @@ fun SignUpBody() {
                         value = password,
                         onValueChange = { password = it },
                         label = { Text("Password") },
-                        visualTransformation = PasswordVisualTransformation(),
+                        visualTransformation = if (passwordVisibility) VisualTransformation.None else PasswordVisualTransformation(),
                         modifier = fieldModifier,
-                        shape = RoundedCornerShape(16.dp)
+                        shape = RoundedCornerShape(16.dp),
+                                trailingIcon = {
+                            val icon = if (passwordVisibility) R.drawable.baseline_visibility_24 else R.drawable.baseline_visibility_off_24
+                            IconButton(onClick = { passwordVisibility= !passwordVisibility }) {
+                                Icon(
+                                    painter = painterResource(id = icon),
+                                    contentDescription = if (passwordVisibility) "Hide password" else "Show password"
+                                )
+                            }
+                        }
                     )
 
                     OutlinedTextField(
                         value = confirmPassword,
                         onValueChange = { confirmPassword = it },
                         label = { Text("Confirm Password") },
-                        visualTransformation = PasswordVisualTransformation(),
+                        visualTransformation = if (passwordVisibility) VisualTransformation.None else PasswordVisualTransformation(),
                         modifier = fieldModifier,
-                        shape = RoundedCornerShape(16.dp)
+                        shape = RoundedCornerShape(16.dp),
+                        trailingIcon = {
+                            val icon = if (passwordVisibility) R.drawable.baseline_visibility_24 else R.drawable.baseline_visibility_off_24
+                            IconButton(onClick = { passwordVisibility= !passwordVisibility }) {
+                                Icon(
+                                    painter = painterResource(id = icon),
+                                    contentDescription = if (passwordVisibility) "Hide password" else "Show password"
+                                )
+                            }
+                        }
                     )
 
                     Spacer(modifier = Modifier.height(20.dp))

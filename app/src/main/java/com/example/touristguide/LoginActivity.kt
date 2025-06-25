@@ -20,9 +20,16 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -42,7 +49,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -62,8 +71,13 @@ class LoginActivity : ComponentActivity() {
 fun LoginBody() {
     val context = LocalContext.current
     val activity = context as? Activity
+    var email by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    var rememberMe by remember { mutableStateOf(false) }
+    var passwordVisibility by remember {
+        mutableStateOf(false) }
     Scaffold{ innerPadding ->
-        Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+        Box(modifier = Modifier.padding(innerPadding).fillMaxSize()) {
             // Background Image
             Image(
                 painter = painterResource(id = R.drawable.login_bg),
@@ -89,7 +103,7 @@ fun LoginBody() {
 
             Column(
                 modifier = Modifier
-                    .fillMaxWidth().padding(vertical = 10.dp),
+                    .fillMaxWidth().padding(vertical = 7.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Image(
@@ -125,15 +139,16 @@ fun LoginBody() {
                         color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.padding(top = 12.dp, bottom = 24.dp)
                     )
-
-                    var email by remember { mutableStateOf("") }
-                    var password by remember { mutableStateOf("") }
-                    var rememberMe by remember { mutableStateOf(false) }
-
                     OutlinedTextField(
                         value = email,
                         onValueChange = { email = it },
                         label = { Text("Email") },
+                        prefix = {
+                            Icon(
+                                imageVector = Icons.Default.Person,
+                                contentDescription = null
+                            )
+                        },
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -143,10 +158,32 @@ fun LoginBody() {
                     OutlinedTextField(
                         value = password,
                         onValueChange = { password = it },
-                        label = { Text("Password") },
+                        prefix = {
+                            Icon(
+                                imageVector = Icons.Default.Lock,
+                                contentDescription = null
+                            )
+                        },
+                        suffix = {
+                            Icon(
+                                painter = painterResource(if (passwordVisibility) R.drawable.baseline_visibility_24 else R.drawable.baseline_visibility_off_24),
+                                contentDescription = null,
+                                modifier = Modifier.clickable {
+                                    passwordVisibility = !passwordVisibility
+                                }
+                            )
+                        },
+//                        label = { Text("Password") },
                         shape = RoundedCornerShape(12.dp),
-                        visualTransformation = PasswordVisualTransformation(),
+                        visualTransformation =if (passwordVisibility) VisualTransformation.None else PasswordVisualTransformation(),
+                        placeholder = {
+                            Text("*******")
+                        },
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Password
+                        ),
                         modifier = Modifier.fillMaxWidth()
+
                     )
 
                     Spacer(modifier = Modifier.height(8.dp))
@@ -222,7 +259,7 @@ fun LoginBody() {
                                 .size(50.dp)
                                 .clickable {}
                         )
-
+                        Spacer(modifier = Modifier.width(15.dp))
                         Image(
                             painter = painterResource(R.drawable.googlelogo),
                             contentDescription = null,
