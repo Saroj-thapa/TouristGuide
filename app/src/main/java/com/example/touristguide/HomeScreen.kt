@@ -6,6 +6,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,6 +19,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -51,7 +54,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.touristguide.ui.theme.TouristGuideTheme
 
 class HomeScreen : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -144,7 +146,7 @@ fun HomeScreenBody() {
                 contentPadding = PaddingValues(4.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.height(300.dp)
+                modifier = Modifier.height(300.dp),
             ) {
                 items(categoryItems.take(8)) { item ->
                     CategoryCard(label = item.label, icon = item.icon)
@@ -171,30 +173,44 @@ fun HomeScreenBody() {
                 colors = CardDefaults.cardColors(containerColor = Color(0xFFE1F5FE)),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Box {
-                        Image(
-                            painter = painterResource(id = R.drawable.mountain), // replace with your real image
-                            contentDescription = "Mountain",
+                LazyRow(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(5) { // Repeat 10 times
+                        Column(
                             modifier = Modifier
-                                .fillMaxWidth()
-                                .height(150.dp)
-                        )
-                        Text(
-                            text = "New",
-                            color = Color.White,
-                            fontSize = 12.sp,
-                            modifier = Modifier
-                                .background(Color.Red, shape = RoundedCornerShape(4.dp))
-                                .padding(horizontal = 8.dp, vertical = 4.dp)
-                                .align(Alignment.TopStart)
-                                .padding(6.dp)
-                        )
+                                .width(250.dp)
+                                .padding(8.dp)
+                        ) {
+                            Box {
+                                Image(
+                                    painter = painterResource(id = R.drawable.mountain),
+                                    contentDescription = "Mountain",
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(150.dp)
+                                )
+                                Text(
+                                    text = "New",
+                                    color = Color.White,
+                                    fontSize = 12.sp,
+                                    modifier = Modifier
+                                        .background(Color.Red, shape = RoundedCornerShape(4.dp))
+                                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                                        .align(Alignment.TopStart)
+                                        .padding(6.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text("🏔️ Mountain Peak Paradise", fontWeight = FontWeight.Bold)
+                            Text("Starting from $299", color = Color.Gray)
+                        }
                     }
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text("🏔️ Mountain Peak Paradise", fontWeight = FontWeight.Bold)
-                    Text("Starting from $299", color = Color.Gray)
                 }
+
 
 
             }
@@ -212,6 +228,7 @@ fun CategoryCard(label: String, icon: String) {
             .height(100.dp),
         colors = CardDefaults.cardColors(containerColor = Color(0xFFFAFAFA)),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+
     ) {
         Column(
             modifier = Modifier

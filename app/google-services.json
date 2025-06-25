@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "234113276189",
+    "project_id": "explorenepal-3f314",
+    "storage_bucket": "explorenepal-3f314.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:234113276189:android:8850098362f23bf9e2e9f4",
+        "android_client_info": {
+          "package_name": "com.example.software_engineering"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDWD_eVf4Wh08JhJsPCkZTosDd0PQN7w1c"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:234113276189:android:0ae36a831c03ebfce2e9f4",
+        "android_client_info": {
+          "package_name": "com.example.touristguide"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDWD_eVf4Wh08JhJsPCkZTosDd0PQN7w1c"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
