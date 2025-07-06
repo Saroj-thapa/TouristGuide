@@ -31,7 +31,9 @@ import androidx.navigation.compose.rememberNavController
 import com.example.touristguide.ui.theme.TouristGuideTheme
 import com.example.touristguide.ui.components.CommonTopBar
 import com.example.touristguide.ui.components.CommonBottomBar
-fun WeatherScreen(navController: NavController) {}
+fun WeatherScreen(navController: NavController) {
+
+}
 
 @Preview(showBackground = true)
 @Composable

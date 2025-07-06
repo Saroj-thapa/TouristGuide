@@ -20,7 +20,13 @@ import com.example.touristguide.R
 import com.example.touristguide.navigation.Routes
 import com.example.touristguide.viewmodel.AuthViewModel
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.VisualTransformation
 
 @Composable
 fun LoginScreen(navController: NavController, viewModel: AuthViewModel = viewModel()) {
@@ -28,6 +34,8 @@ fun LoginScreen(navController: NavController, viewModel: AuthViewModel = viewMod
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var rememberMe by remember { mutableStateOf(false) }
+    var passwordVisibility by remember {
+        mutableStateOf(false) }
     val authState by viewModel.authState.collectAsState()
 
     LaunchedEffect(authState) {
@@ -37,7 +45,8 @@ fun LoginScreen(navController: NavController, viewModel: AuthViewModel = viewMod
                     popUpTo(Routes.LOGIN) { inclusive = true }
                 }
             } else {
-                Toast.makeText(context, result.exceptionOrNull()?.message ?: "Login failed", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, result.exceptionOrNull()?.message ?: "Login failed",
+                    Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -109,15 +118,46 @@ fun LoginScreen(navController: NavController, viewModel: AuthViewModel = viewMod
                         value = email,
                         onValueChange = { email = it },
                         label = { Text("Email") },
+                        prefix = {
+                            Icon(
+                                imageVector = Icons.Default.Person,
+                                contentDescription = null
+                            )
+                        },
                         modifier = Modifier.fillMaxWidth()
                     )
                     Spacer(Modifier.height(12.dp))
                     OutlinedTextField(
                         value = password,
                         onValueChange = { password = it },
-                        label = { Text("Password") },
+//                        label = { Text("Password") },
+                        prefix = {
+                            Icon(
+                                imageVector = Icons.Default.Lock,
+                                contentDescription = null
+                            )
+                        },
+                        suffix = {
+                            Icon(
+                                painter = painterResource(if (passwordVisibility)
+                                    R.drawable.baseline_visibility_24 else R.drawable.baseline_visibility_off_24),
+                                contentDescription = null,
+                                modifier = Modifier.clickable {
+                                    passwordVisibility = !passwordVisibility
+                                }
+                            )
+                        },
+                        shape = RoundedCornerShape(12.dp),
+                        visualTransformation =if (passwordVisibility)
+                            VisualTransformation.None else PasswordVisualTransformation(),
+                        placeholder = {
+                            Text("*******")
+                        },
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Password
+                        ),
                         modifier = Modifier.fillMaxWidth(),
-                        visualTransformation = PasswordVisualTransformation()
+
                     )
                     Spacer(Modifier.height(8.dp))
 
@@ -154,6 +194,30 @@ fun LoginScreen(navController: NavController, viewModel: AuthViewModel = viewMod
                         modifier = Modifier.clickable {
                             navController.navigate(Routes.SIGNUP)
                         })
+                    Spacer(modifier = Modifier.height(15.dp))
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 5.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Absolute.Center
+                    ){
+                        Image(
+                            painter = painterResource(R.drawable.facebooklogo),
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(50.dp)
+                                .clickable {}
+                        )
+                        Spacer(modifier = Modifier.width(15.dp))
+                        Image(
+                            painter = painterResource(R.drawable.googlelogo),
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(50.dp)
+                                .clickable {}
+                        )
+                    }
                 }
             }
         }
