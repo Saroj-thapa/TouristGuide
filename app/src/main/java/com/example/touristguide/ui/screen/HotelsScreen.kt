@@ -62,8 +62,7 @@ fun HotelsScreen(navController: NavController) {
     var selectedRating by remember { mutableStateOf<Int?>(null) }
 
     val filteredHotels = hotels.filter {
-        (searchQuery.isBlank() || it.name.contains(searchQuery, ignoreCase = true)
-                || it.location.contains(searchQuery, ignoreCase = true)) &&
+        (searchQuery.isBlank() || it.name.contains(searchQuery, ignoreCase = true) || it.location.contains(searchQuery, ignoreCase = true)) &&
                 (selectedLocation == null || it.location.contains(selectedLocation!!, ignoreCase = true)) &&
                 (selectedRating == null || it.rating == selectedRating)
     }
