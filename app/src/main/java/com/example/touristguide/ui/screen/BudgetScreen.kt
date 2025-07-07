@@ -1,8 +1,10 @@
 package com.example.touristguide.ui.screen
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -23,12 +25,11 @@ import com.example.touristguide.ui.theme.TouristGuideTheme
 import com.example.touristguide.ui.components.CommonTopBar
 import com.example.touristguide.ui.components.CommonBottomBar
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun BudgetScreen(navController: NavController) {
     var days by remember { mutableStateOf("") }
     var people by remember { mutableStateOf("") }
-
 
     Scaffold(
         topBar = {
@@ -41,265 +42,116 @@ fun BudgetScreen(navController: NavController) {
             CommonBottomBar(navController = navController)
         }
     ) { paddingValues ->
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
+                .padding(20.dp)
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
-            Column (
-                modifier = Modifier
-                    .padding(5.dp)
-            ){ Text(
-                    text = "Trip Duration (Days)",
-                    style = TextStyle(
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold
+
+            Text(
+                "Plan Your Trip Effortlessly",
+                style = MaterialTheme.typography.headlineSmall,
+                color = MaterialTheme.colorScheme.primary
+            )
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    OutlinedTextField(
+                        value = days,
+                        onValueChange = { days = it },
+                        label = { Text("Trip Duration (Days)") },
+                        modifier = Modifier.fillMaxWidth(),
+                        keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
+                        shape = RoundedCornerShape(12.dp)
                     )
-                )
 
-                Spacer(modifier = Modifier.height(5.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
 
-                OutlinedTextField(
-                    value = days,
-                    onValueChange = { input ->
-                        days = input
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 10.dp),
-                    shape = RoundedCornerShape(10.dp),
-
-                    placeholder = {
-                        Text("Enter number of days")
-                    },
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Text
-                    ),
-                    colors = TextFieldDefaults.colors(
-                        focusedContainerColor = Color.Gray.copy(0.2f),
-                        unfocusedContainerColor = Color.Gray.copy(0.2f),
+                    OutlinedTextField(
+                        value = people,
+                        onValueChange = { people = it },
+                        label = { Text("Number of Travelers") },
+                        modifier = Modifier.fillMaxWidth(),
+                        keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
+                        shape = RoundedCornerShape(12.dp)
                     )
-                )
-                Spacer(
-                    modifier = Modifier.height(5.dp)
-                )
+                }
+            }
 
-                Text(
-                    text = "No. of Travelers",
-                    style = TextStyle(
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold
+            Text("🌍 Select Destination Region", style = MaterialTheme.typography.titleMedium)
+
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf("Pokhara", "Kathmandu", "Mustang").forEach { place ->
+                    AssistChip(
+                        onClick = {},
+                        label = { Text(place) },
+                        shape = RoundedCornerShape(10.dp),
+                        colors = AssistChipDefaults.assistChipColors(
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer
+                        )
                     )
-                )
+                }
+            }
 
-                Spacer(
-                    modifier = Modifier.height(5.dp)
-                )
+            Button(
+                onClick = { /* Estimate Logic */ },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+            ) {
+                Text("💰 Estimate Cost", color = Color.White)
+            }
 
-                OutlinedTextField(//2
-                    value = days,
-                    onValueChange = { input ->
-                        days = input
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 10.dp),
-                    shape = RoundedCornerShape(10.dp),
+            Divider(thickness = 1.dp)
 
-                    placeholder = {
-                        Text("Enter number of days")
-                    },
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Text
-                    ),
-                    colors = TextFieldDefaults.colors(
-                        focusedContainerColor = Color.Gray.copy(0.2f),
-                        unfocusedContainerColor = Color.Gray.copy(0.2f),
-                    )
-                )
-                Spacer(
-                    modifier = Modifier.height(5.dp)
-                )
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+            ) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(" Estimated Costs", style = MaterialTheme.typography.titleMedium)
+                    Text("🍲 Food: Rs. 10,500", style = MaterialTheme.typography.bodyLarge)
+                    Text("🏨 Stay: Rs. 15,000", style = MaterialTheme.typography.bodyLarge)
+                    Text("🚌 Transport: Rs. 33,000", style = MaterialTheme.typography.bodyLarge)
+                }
+            }
 
-                Text(
-                    text = "Select Region",
-                    style = TextStyle(
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                )
-                Spacer(
-                    modifier = Modifier.height(5.dp)
-                )
-
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                OutlinedButton(
+                    onClick = {},
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(12.dp)
                 ) {
-                    Button(
-                        onClick = {},
-                        modifier = Modifier,
-                        shape = RoundedCornerShape(10.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            contentColor = Color.Black,
-                            containerColor = Color.LightGray
-                        )
-
-                    ) {
-                        Text(
-                            text = "Pokhara"
-                        )
-                    }
-
-                    Button(
-                        onClick = {},
-                        modifier = Modifier,
-                        shape = RoundedCornerShape(10.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            contentColor = Color.Black,
-                            containerColor = Color.LightGray
-                        )
-
-                    ) {
-                        Text(
-                            text = "Kathmandu"
-                        )
-                    }
-                    Button(
-                        onClick = {},
-                        modifier = Modifier,
-                        shape = RoundedCornerShape(10.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            contentColor = Color.Black,
-                            containerColor = Color.LightGray
-                        )
-
-                    ) {
-                        Text(
-                            text = "Mustang"
-                        )
-                    }
+                    Text("📴 Offline Mode")
                 }
 
-                Text(
-                    text = "Travel Style",
-                    style = TextStyle(
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                )
                 Button(
                     onClick = {},
-                    modifier = Modifier,
-                    shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        contentColor = Color.White,
-                        containerColor = Color.Black
-                    )
-
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
                 ) {
-                    Text(
-                        text = "Estimate Cost"
-                    )
+                    Text("💾 Save Estimate", color = Color.White)
                 }
-
-                Spacer(modifier = Modifier.height(20.dp))
-
-                Text(
-                    text = "Estimated Food Cost",
-                    style = TextStyle(
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                )
-
-                Text(
-                    text = "Rs. 10,500",
-                    style = TextStyle(
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Light
-                    )
-                )
-
-                Spacer(modifier = Modifier.height(25.dp))
-
-
-                Text(
-                    text = "Estimated Stay Cost",
-                    style = TextStyle(
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                )
-
-                Text(
-                    text = "Rs. 15,000",
-                    style = TextStyle(
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Light
-                    )
-                )
-
-                Spacer(modifier = Modifier.height(25.dp))
-
-                Text(
-                    text = "Estimated Transport Cost",
-                    style = TextStyle(
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                )
-
-                Text(
-                    text = "Rs. 33,000",
-                    style = TextStyle(
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Light
-                    )
-                )
-
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(100.dp)
-                ) {
-                    Button(
-                        onClick = {},
-                        modifier = Modifier,
-                        shape = RoundedCornerShape(10.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            contentColor = Color.Black,
-                            containerColor = Color.LightGray
-                        )
-
-                    ) {
-                        Text(
-                            text = "Offine Mode"
-                        )
-                    }
-
-                    Button(
-                        onClick = {},
-                        modifier = Modifier,
-                        shape = RoundedCornerShape(10.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            contentColor = Color.White,
-                            containerColor = Color.Black
-                        )
-                    ) {
-                        Text(
-                            text = "Save Estimate"
-                        )
-                    }
-
-                }
-
-
-
-
-
             }
         }
-
-        }
     }
+}
+
+
 
 
 @Preview(showBackground = true)
