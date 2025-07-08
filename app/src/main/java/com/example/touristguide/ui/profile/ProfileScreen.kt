@@ -1,5 +1,9 @@
 package com.example.touristguide.ui.profile
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -32,15 +36,24 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.touristguide.viewmodel.AuthViewModel
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.collectAsState
+import coil.compose.rememberAsyncImagePainter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ProfileScreen(navController: NavController, viewModel: AuthViewModel = androidx.lifecycle.viewmodel.compose.viewModel<AuthViewModel>()) {
+fun ProfileScreen(navController: NavController, viewModel: AuthViewModel = viewModel()) {
     val userName by viewModel.userName.collectAsState("")
     val userEmail by viewModel.userEmail.collectAsState("")
     var showChangePasswordDialog by remember { mutableStateOf(false) }
     var newPassword by remember { mutableStateOf("") }
     var passwordMessage by remember { mutableStateOf("") }
+    var profileImageUri by remember { mutableStateOf<Uri?>(null) }
+
+    val imageLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        profileImageUri = uri
+    }
+
     LaunchedEffect(Unit) { viewModel.fetchUserName() }
 
     Scaffold(
@@ -79,15 +92,24 @@ fun ProfileScreen(navController: NavController, viewModel: AuthViewModel = andro
                         modifier = Modifier
                             .size(80.dp)
                             .clip(CircleShape)
+                            .clickable { imageLauncher.launch("image/*") }
                             .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Person,
-                            contentDescription = null,
-                            modifier = Modifier.size(40.dp),
-                            tint = MaterialTheme.colorScheme.primary
-                        )
+                        if (profileImageUri != null) {
+                            Image(
+                                painter = rememberAsyncImagePainter(profileImageUri),
+                                contentDescription = "Profile Image",
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.Person,
+                                contentDescription = null,
+                                modifier = Modifier.size(40.dp),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
                     }
                     Spacer(modifier = Modifier.width(16.dp))
                     Column {
@@ -118,7 +140,7 @@ fun ProfileScreen(navController: NavController, viewModel: AuthViewModel = andro
                     color = MaterialTheme.colorScheme.primary
                 )
                 Spacer(modifier = Modifier.height(8.dp))
-                
+
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(
@@ -130,7 +152,7 @@ fun ProfileScreen(navController: NavController, viewModel: AuthViewModel = andro
                     ) {
                         OutlinedTextField(
                             value = userName,
-                            onValueChange = {  },
+                            onValueChange = { },
                             label = { Text("Username") },
                             singleLine = true,
                             modifier = Modifier.fillMaxWidth(),
@@ -142,7 +164,7 @@ fun ProfileScreen(navController: NavController, viewModel: AuthViewModel = andro
                         Spacer(modifier = Modifier.height(12.dp))
                         OutlinedTextField(
                             value = userEmail,
-                            onValueChange = {  },
+                            onValueChange = { },
                             label = { Text("Email") },
                             singleLine = true,
                             modifier = Modifier.fillMaxWidth(),
@@ -168,7 +190,7 @@ fun ProfileScreen(navController: NavController, viewModel: AuthViewModel = andro
                     color = MaterialTheme.colorScheme.primary
                 )
                 Spacer(modifier = Modifier.height(8.dp))
-                
+
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(
@@ -212,7 +234,7 @@ fun ProfileScreen(navController: NavController, viewModel: AuthViewModel = andro
 
             // Logout Button
             Button(
-                onClick = { 
+                onClick = {
                     navController.navigate(Routes.LOGIN) {
                         popUpTo(0)
                         launchSingleTop = true
@@ -314,6 +336,7 @@ private fun SettingItem(
         )
     }
 }
+
 
 @Preview(showBackground = true)
 @Composable
