@@ -2,8 +2,10 @@ package com.example.touristguide.navigation
 
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.navArgument
 import com.example.touristguide.ui.auth.ForgotPasswordScreen
 import com.example.touristguide.ui.auth.LoginScreen
 import com.example.touristguide.ui.auth.SignupScreen
@@ -88,5 +90,15 @@ fun NavigationGraph(navController: NavHostController) {
         composable(Routes.EMERGENCY) {
             HelpScreen(navController)
         }
+        composable("restaurantDetails/{restaurantName}", arguments = listOf(navArgument("restaurantName")
+        { type = NavType.StringType })) { backStackEntry ->
+            val restaurantName = backStackEntry.arguments?.getString("restaurantName") ?: "Restaurant"
+            com.example.touristguide.ui.screen.RestaurantDetailScreen(restaurantName, navController)
+        }
+        composable("hotelDetails/{hotelId}", arguments = listOf(navArgument("hotelId") { type = NavType.StringType })) { backStackEntry ->
+            val hotelId = backStackEntry.arguments?.getString("hotelId") ?: "1"
+            com.example.touristguide.ui.screen.HotelDetailsScreen(hotelId, navController)
+        }
     }
 }
+
