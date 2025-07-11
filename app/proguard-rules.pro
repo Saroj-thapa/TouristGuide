@@ -40,6 +40,7 @@
 -keep class com.google.firebase.perf.** { *; }
 -keep class com.google.firebase.appcheck.** { *; }
 -keep class com.google.firebase.installations.** { *; }
+-keep class com.google.firebase.firestore.** { *; }
 
 #############################################
 # Google Play Services & Maps
@@ -84,3 +85,9 @@
 #############################################
 -dontwarn org.junit.**
 -dontwarn androidx.test.**
+
+#############################################
+# Additional Compose optimizations
+#############################################
+-keep class androidx.compose.runtime.snapshots.** { *; }
+-dontwarn androidx.compose.runtime.snapshots.**
