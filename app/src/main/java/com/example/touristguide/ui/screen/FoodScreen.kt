@@ -38,8 +38,6 @@ import androidx.navigation.compose.rememberNavController
 import com.example.touristguide.ui.theme.TouristGuideTheme
 import com.example.touristguide.ui.components.CommonTopBar
 import com.example.touristguide.ui.components.CommonBottomBar
-
-
 private data class Restaurant(
     val name: String,
     val cuisine: String,
@@ -50,13 +48,11 @@ private data class Restaurant(
     val isOpen: Boolean,
     val imageRes: Int = android.R.drawable.ic_menu_gallery // Placeholder
 )
-
 private val featuredRestaurants = listOf(
     Restaurant("Annapura Thakali Ghar", "Thakali", 500, 4.7f, false, "Lazimpat", true),
     Restaurant("Newari Bhanchha Ghar", "Newari", 500, 4.5f, false, "Patan", false),
     Restaurant("Indian Spice", "Indian", 500, 4.2f, true, "Thamel", true)
 )
-
 private val allRestaurants = featuredRestaurants + listOf(
     Restaurant("Everest Dine", "Multi-cuisine", 700, 4.6f, false, "Durbar Marg", true),
     Restaurant("Veggie Delight", "Vegetarian", 350, 4.8f, true, "Jawalakhel", true),
@@ -276,7 +272,8 @@ private fun RestaurantCard(restaurant: Restaurant, onClick: () -> Unit) {
                     Text(if (restaurant.isVeg) "Veg" else "Non-veg", fontSize = 12.sp, modifier = Modifier.padding(start = 2.dp))
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.LocationOn, contentDescription = null, tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(16.dp))
+                    Icon(Icons.Default.LocationOn, contentDescription = null,
+                        tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(16.dp))
                     Text(restaurant.location, fontSize = 12.sp, color = MaterialTheme.colorScheme.secondary)
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
@@ -307,6 +304,7 @@ private fun RestaurantCard(restaurant: Restaurant, onClick: () -> Unit) {
         }
     }
 }
+
 
 
 @Preview(showBackground = true)
