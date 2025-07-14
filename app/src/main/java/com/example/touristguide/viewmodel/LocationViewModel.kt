@@ -1,4 +1,4 @@
 package com.example.touristguide.viewmodel
 
-class TrekkingViewModel {
+class LocationViewModel {
 }
