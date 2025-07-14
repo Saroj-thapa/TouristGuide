@@ -129,16 +129,7 @@ fun BudgetScreen(navController: NavController) {
             Row(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 modifier = Modifier.fillMaxWidth()
-            ) {
-                OutlinedButton(
-                    onClick = {},
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Text("📴 Offline Mode")
-                }
-
-                Button(
+            ) { Button(
                     onClick = {},
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(12.dp),

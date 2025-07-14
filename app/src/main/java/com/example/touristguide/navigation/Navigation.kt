@@ -2,10 +2,10 @@ package com.example.touristguide.navigation
 
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
-import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import androidx.navigation.NavType
 import com.example.touristguide.ui.auth.ForgotPasswordScreen
 import com.example.touristguide.ui.auth.LoginScreen
 import com.example.touristguide.ui.auth.SignupScreen
@@ -33,10 +33,10 @@ object Routes {
 }
 
 @Composable
-fun NavigationGraph(navController: NavHostController) {
+fun NavigationGraph(navController: NavHostController, startDestination: String = Routes.SPLASH) {
     NavHost(
         navController = navController,
-        startDestination = Routes.SPLASH
+        startDestination = startDestination
     ) {
         // Splash screen
         composable(Routes.SPLASH) {
@@ -90,8 +90,7 @@ fun NavigationGraph(navController: NavHostController) {
         composable(Routes.EMERGENCY) {
             HelpScreen(navController)
         }
-        composable("restaurantDetails/{restaurantName}", arguments = listOf(navArgument("restaurantName")
-        { type = NavType.StringType })) { backStackEntry ->
+        composable("restaurantDetails/{restaurantName}", arguments = listOf(navArgument("restaurantName") { type = NavType.StringType })) { backStackEntry ->
             val restaurantName = backStackEntry.arguments?.getString("restaurantName") ?: "Restaurant"
             com.example.touristguide.ui.screen.RestaurantDetailScreen(restaurantName, navController)
         }
@@ -101,4 +100,3 @@ fun NavigationGraph(navController: NavHostController) {
         }
     }
 }
-
