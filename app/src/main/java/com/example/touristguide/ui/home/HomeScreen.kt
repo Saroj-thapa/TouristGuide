@@ -36,9 +36,11 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.touristguide.viewmodel.AuthViewModel
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.collectAsState
+import com.example.touristguide.data.model.User
+import android.util.Log
 
 data class CategoryItem(
-    val label: String, 
+    val label: String,
     val icon: String,
     val route: String
 )
@@ -115,7 +117,7 @@ fun FeaturedDestinationCarousel() {
     // Timer for updating content and scrolling
     LaunchedEffect(Unit) {
         while (true) {
-            delay(30000) // Wait for 30 seconds
+            delay(10000) // Wait for 10 seconds
             // Update the offset for scrolling
             currentOffset = (currentOffset + 1) % 4
 
@@ -196,8 +198,12 @@ fun FeaturedDestinationCarousel() {
 
 @Composable
 fun HomeScreen(navController: NavController, viewModel: AuthViewModel = androidx.lifecycle.viewmodel.compose.viewModel<AuthViewModel>()) {
+    val user by viewModel.user.collectAsState()
     val userName by viewModel.userName.collectAsState("")
-    LaunchedEffect(Unit) { viewModel.fetchUserName() }
+    LaunchedEffect(user, userName) {
+        Log.d("HomeScreen", "user: $user, userName: $userName")
+    }
+    LaunchedEffect(Unit) { viewModel.fetchUser() }
     Scaffold(
         bottomBar = { CommonBottomBar(navController = navController) }
     ) { padding ->
@@ -209,9 +215,9 @@ fun HomeScreen(navController: NavController, viewModel: AuthViewModel = androidx
                 .verticalScroll(rememberScrollState())
         ) {
             Text(
-                text = "Welcome to Nepal, ${if (userName.isNotBlank()) userName else "User"}!",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold
+                text = user?.let { "Welcome, ${it.firstName} ${it.lastName}".trim() } ?: "Welcome, $userName",
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.padding(16.dp)
             )
 
             Spacer(modifier = Modifier.height(12.dp))

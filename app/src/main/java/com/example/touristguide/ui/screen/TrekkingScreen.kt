@@ -1,5 +1,6 @@
 package com.example.touristguide.ui.screen
 
+
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -19,10 +20,21 @@ import androidx.navigation.compose.rememberNavController
 import com.example.touristguide.ui.theme.TouristGuideTheme
 import com.example.touristguide.ui.components.CommonTopBar
 import com.example.touristguide.ui.components.CommonBottomBar
+import com.example.touristguide.viewmodel.FirebaseViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.touristguide.viewmodel.LocationViewModel
+import com.example.touristguide.viewmodel.TrekkingViewModel
+import androidx.compose.runtime.collectAsState
+import com.google.firebase.auth.FirebaseAuth
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TrekkingScreen(navController: NavController) {
+fun TrekkingScreen(
+    navController: NavController,
+    trekkingViewModel: TrekkingViewModel = viewModel(),
+    locationViewModel: LocationViewModel = viewModel(),
+    firebaseViewModel: FirebaseViewModel = viewModel()
+) {
     val scrollState = rememberScrollState()
     Scaffold(
         topBar = {
@@ -46,11 +58,15 @@ fun TrekkingScreen(navController: NavController) {
             Spacer(Modifier.height(12.dp))
 
 
-            RouteCard(
-                title = "Everest Base Camp Trek",
-                duration = "12 days",
-                difficulty = "Hard"
-            )
+            // Example dynamic trek list (replace placeholder):
+            val trekList = trekkingViewModel.treks.collectAsState().value
+            if (trekList.isEmpty()) {
+                Text("No treks available.", color = Color.Gray, modifier = Modifier.padding(8.dp))
+            } else {
+                trekList.forEach { trek ->
+                    RouteCard(title = trek.name, duration = trek.duration, difficulty = trek.difficulty)
+                }
+            }
             Spacer(Modifier.height(16.dp))
             RouteCard(
                 title = "Annapurna Base Camp Trek",
@@ -84,6 +100,60 @@ fun TrekkingScreen(navController: NavController) {
                 colors = ButtonDefaults.buttonColors(Color.Black),
             ) {
                 Text("Save Route", color = Color.White)
+            }
+
+            val userId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+            val userPlans = firebaseViewModel.userPlans.collectAsState().value
+            val bookmarks = firebaseViewModel.bookmarks.collectAsState().value
+            // Example: Add Bookmark and Add to Plan buttons for each trek
+            // treks.forEach { trek -> // treks is not defined in this scope
+            //     Row {
+            //         Button(onClick = {
+            //             val bookmarkId = "bookmark_${System.currentTimeMillis()}"
+            //             val bookmarkData = mapOf(
+            //                 "userId" to userId,
+            //                 "name" to trek.name,
+            //                 "location" to trek.location,
+            //                 "lat" to trek.lat,
+            //                 "lon" to trek.lon
+            //             )
+            //             firebaseViewModel.addBookmark(userId, bookmarkId, bookmarkData)
+            //         }) { Text("Bookmark") }
+            //         Spacer(Modifier.width(8.dp))
+            //         Button(onClick = {
+            //             val planId = "plan_${System.currentTimeMillis()}"
+            //             val planData = mapOf(
+            //                 "userId" to userId,
+            //                 "name" to trek.name,
+            //                 "location" to trek.location,
+            //                 "lat" to trek.lat,
+            //                 "lon" to trek.lon
+            //             )
+            //             firebaseViewModel.savePlan(planId, planData)
+            //         }) { Text("Add to Plan") }
+            //     }
+            // }
+            // Display user's bookmarks
+            Text("My Bookmarked Treks", fontWeight = FontWeight.Bold)
+            if (bookmarks.isEmpty()) {
+                Text("No bookmarked treks yet.", color = Color.Gray, modifier = Modifier.padding(8.dp))
+            } else {
+                bookmarks.forEach { bookmark ->
+                    val name = bookmark["name"] as? String ?: "Unknown"
+                    val location = bookmark["location"] as? String ?: ""
+                    Text("$name - $location")
+                }
+            }
+            // Display user's plans
+            Text("My Trekking Plans", fontWeight = FontWeight.Bold)
+            if (userPlans.isEmpty()) {
+                Text("No trekking plans yet.", color = Color.Gray, modifier = Modifier.padding(8.dp))
+            } else {
+                userPlans.forEach { plan ->
+                    val name = plan["name"] as? String ?: "Unknown"
+                    val location = plan["location"] as? String ?: ""
+                    Text("$name - $location")
+                }
             }
         }
     }

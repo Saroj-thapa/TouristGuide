@@ -34,19 +34,28 @@ import com.example.touristguide.ui.components.CommonBottomBar
 import com.example.touristguide.ui.home.HomeScreen
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.touristguide.viewmodel.AuthViewModel
+import com.example.touristguide.viewmodel.ProfileViewModel
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.collectAsState
 import coil.compose.rememberAsyncImagePainter
+import com.example.touristguide.data.model.User
+import android.util.Log
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ProfileScreen(navController: NavController, viewModel: AuthViewModel = viewModel()) {
-    val userName by viewModel.userName.collectAsState("")
-    val userEmail by viewModel.userEmail.collectAsState("")
+fun ProfileScreen(
+    navController: NavController,
+    authViewModel: AuthViewModel = viewModel(),
+    profileViewModel: ProfileViewModel = viewModel()
+) {
+    val user by authViewModel.user.collectAsState()
+    val userName by authViewModel.userName.collectAsState("")
+    val userEmail by authViewModel.userEmail.collectAsState("")
     var showChangePasswordDialog by remember { mutableStateOf(false) }
     var newPassword by remember { mutableStateOf("") }
     var passwordMessage by remember { mutableStateOf("") }
     var profileImageUri by remember { mutableStateOf<Uri?>(null) }
+    val isAnonymous by authViewModel.isAnonymous.collectAsState()
 
     val imageLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -54,7 +63,10 @@ fun ProfileScreen(navController: NavController, viewModel: AuthViewModel = viewM
         profileImageUri = uri
     }
 
-    LaunchedEffect(Unit) { viewModel.fetchUserName() }
+    LaunchedEffect(Unit) { authViewModel.fetchUser() }
+    LaunchedEffect(user, userName, userEmail) {
+        Log.d("ProfileScreen", "user: $user, userName: $userName, userEmail: $userEmail")
+    }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -92,88 +104,93 @@ fun ProfileScreen(navController: NavController, viewModel: AuthViewModel = viewM
                         modifier = Modifier
                             .size(80.dp)
                             .clip(CircleShape)
-                            .clickable { imageLauncher.launch("image/*") }
                             .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
                         contentAlignment = Alignment.Center
                     ) {
-                        if (profileImageUri != null) {
-                            Image(
-                                painter = rememberAsyncImagePainter(profileImageUri),
-                                contentDescription = "Profile Image",
-                                modifier = Modifier.fillMaxSize()
-                            )
-                        } else {
-                            Icon(
-                                imageVector = Icons.Default.Person,
-                                contentDescription = null,
-                                modifier = Modifier.size(40.dp),
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                        }
+                        Icon(
+                            imageVector = Icons.Default.Person,
+                            contentDescription = null,
+                            modifier = Modifier.size(40.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
                     }
                     Spacer(modifier = Modifier.width(16.dp))
                     Column {
                         Text(
-                            text = userName,
+                            text = if (isAnonymous) "Anonymous" else user?.let { "${it.firstName} ${it.lastName}".trim() } ?: userName,
                             style = MaterialTheme.typography.titleLarge,
                             color = MaterialTheme.colorScheme.onPrimaryContainer
                         )
-                        Text(
-                            text = userEmail,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
-                        )
+                        if (!isAnonymous) {
+                            Text(
+                                text = user?.email ?: userEmail,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                            )
+                        }
                     }
                 }
             }
 
-            // Account Settings Section
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-                    .padding(top = 24.dp)
-            ) {
-                Text(
-                    text = "Account Settings",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surface
-                    )
+            if (!isAnonymous) {
+                // Account Settings Section
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                        .padding(top = 24.dp)
                 ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp)
+                    Text(
+                        text = "Account Settings",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surface
+                        )
                     ) {
-                        OutlinedTextField(
-                            value = userName,
-                            onValueChange = { },
-                            label = { Text("Username") },
-                            singleLine = true,
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                unfocusedBorderColor = MaterialTheme.colorScheme.outline,
-                                unfocusedLabelColor = MaterialTheme.colorScheme.onSurface
+                        Column(
+                            modifier = Modifier.padding(16.dp)
+                        ) {
+                            OutlinedTextField(
+                                value = user?.let { "${it.firstName} ${it.lastName}".trim() } ?: userName,
+                                onValueChange = { },
+                                label = { Text("Username") },
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                                    unfocusedLabelColor = MaterialTheme.colorScheme.onSurface
+                                )
                             )
-                        )
-                        Spacer(modifier = Modifier.height(12.dp))
-                        OutlinedTextField(
-                            value = userEmail,
-                            onValueChange = { },
-                            label = { Text("Email") },
-                            singleLine = true,
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                unfocusedBorderColor = MaterialTheme.colorScheme.outline,
-                                unfocusedLabelColor = MaterialTheme.colorScheme.onSurface
+                            Spacer(modifier = Modifier.height(12.dp))
+                            OutlinedTextField(
+                                value = user?.email ?: userEmail,
+                                onValueChange = { },
+                                label = { Text("Email") },
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                                    unfocusedLabelColor = MaterialTheme.colorScheme.onSurface
+                                )
                             )
-                        )
+                        }
                     }
+                }
+                // Change Password Button (only for non-anonymous)
+                Button(
+                    onClick = { showChangePasswordDialog = true },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                ) {
+                    Text("Change Password")
                 }
             }
 
@@ -219,19 +236,6 @@ fun ProfileScreen(navController: NavController, viewModel: AuthViewModel = viewM
                 }
             }
 
-            // Change Password Button
-            Button(
-                onClick = { showChangePasswordDialog = true },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary
-                )
-            ) {
-                Text("Change Password")
-            }
-
             // Logout Button
             Button(
                 onClick = {
@@ -259,7 +263,7 @@ fun ProfileScreen(navController: NavController, viewModel: AuthViewModel = viewM
         }
     }
 
-    if (showChangePasswordDialog) {
+    if (showChangePasswordDialog && !isAnonymous) {
         AlertDialog(
             onDismissRequest = { showChangePasswordDialog = false },
             title = { Text("Change Password") },
@@ -277,7 +281,7 @@ fun ProfileScreen(navController: NavController, viewModel: AuthViewModel = viewM
             },
             confirmButton = {
                 Button(onClick = {
-                    viewModel.changePassword(newPassword) { success, message ->
+                    profileViewModel.changePassword(newPassword) { success, message ->
                         passwordMessage = message
                         if (success) showChangePasswordDialog = false
                     }

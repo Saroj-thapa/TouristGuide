@@ -57,4 +57,6 @@ class FirebaseService {
     fun isUserLoggedIn(): Boolean {
         return auth.currentUser != null
     }
-} 
+
+    fun getCurrentUser() = auth.currentUser
+}

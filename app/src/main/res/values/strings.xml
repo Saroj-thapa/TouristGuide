@@ -1,4 +1,5 @@
 <resources>
     <string name="app_name">Explore Nepal</string>
     <string name="title_activity_main2">MainActivity2</string>
+    <string name="default_web_client_id">YOUR_WEB_CLIENT_ID_HERE</string>
 </resources>
