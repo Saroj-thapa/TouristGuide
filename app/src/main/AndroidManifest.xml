@@ -13,7 +13,10 @@
         android:theme="@style/Theme.TouristGuide"
         tools:targetApi="31">
 
-
+        <!-- Google Maps API Key -->
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="859de3c5e42a4c309377f7eb1f9ddb00"/>
         <activity
             android:name=".MainActivity"
             android:exported="true"
