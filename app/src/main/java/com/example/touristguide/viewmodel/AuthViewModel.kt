@@ -3,15 +3,22 @@ package com.example.touristguide.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.touristguide.data.repository.FirebaseService
+import com.example.touristguide.data.repository.FirebaseRepository
+import com.example.touristguide.data.repository.RepositoryException
 import com.example.touristguide.data.model.User
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import android.widget.Toast
+import android.util.Log
+import kotlinx.coroutines.tasks.await
+import com.google.firebase.auth.GoogleAuthProvider
+import com.google.firebase.auth.AuthCredential
 
 class AuthViewModel(
-    private val firebaseService: FirebaseService = FirebaseService()
+    private val firebaseService: FirebaseService = FirebaseService(),
+    private val firebaseRepository: FirebaseRepository = FirebaseRepository()
 ) : ViewModel() {
 
     private val _authState = MutableStateFlow<Result<Unit>?>(null)
@@ -23,12 +30,18 @@ class AuthViewModel(
     private val _userEmail = MutableStateFlow("")
     val userEmail: StateFlow<String> = _userEmail
 
+    private val _user = MutableStateFlow<User?>(null)
+    val user: StateFlow<User?> = _user
+
+    private val _isAnonymous = MutableStateFlow(false)
+    val isAnonymous: StateFlow<Boolean> = _isAnonymous
+
     fun login(email: String, password: String) {
         viewModelScope.launch {
             val result = firebaseService.login(email, password)
             _authState.value = result
             if (result.isSuccess) {
-                fetchUserName()
+                fetchUser()
             }
         }
     }
@@ -39,8 +52,13 @@ class AuthViewModel(
             if (result.isSuccess) {
                 val uid = FirebaseAuth.getInstance().currentUser?.uid ?: ""
                 val user = User(uid, firstName, lastName, email)
-                FirebaseFirestore.getInstance().collection("users").document(uid).set(user)
-                fetchUserName()
+                firebaseRepository.addUser(uid, mapOf(
+                    "uid" to uid,
+                    "firstName" to firstName,
+                    "lastName" to lastName,
+                    "email" to email
+                ))
+                fetchUser()
             }
             _authState.value = result
         }
@@ -52,38 +70,112 @@ class AuthViewModel(
         }
     }
 
+    fun loginAnonymously() {
+        viewModelScope.launch {
+            try {
+                FirebaseAuth.getInstance().signInAnonymously().await()
+                val firebaseUser = FirebaseAuth.getInstance().currentUser
+                _isAnonymous.value = firebaseUser?.isAnonymous == true
+                if (firebaseUser != null && firebaseUser.isAnonymous) {
+                    val user = User(uid = firebaseUser.uid, firstName = "Anonymous", lastName = "", email = "")
+                    _user.value = user
+                    _userName.value = "Anonymous"
+                    _userEmail.value = ""
+                }
+            } catch (e: Exception) {
+                _isAnonymous.value = false
+            }
+        }
+    }
+
     fun logout() {
         firebaseService.logout()
         _userName.value = ""
+        _user.value = null
+        _isAnonymous.value = false
     }
 
     fun isUserLoggedIn(): Boolean = firebaseService.isUserLoggedIn()
 
-    fun fetchUserName() {
-        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
-        FirebaseFirestore.getInstance().collection("users").document(uid).get()
-            .addOnSuccessListener { doc ->
-                val firstName = doc.getString("firstName") ?: ""
-                val lastName = doc.getString("lastName") ?: ""
-                val email = doc.getString("email") ?: ""
-                _userName.value = "$firstName $lastName".trim()
-                _userEmail.value = email
+    fun fetchUser() {
+        val firebaseUser = FirebaseAuth.getInstance().currentUser ?: return
+        val uid = firebaseUser.uid
+        _isAnonymous.value = firebaseUser.isAnonymous
+        if (firebaseUser.isAnonymous) {
+            // For anonymous users, do not load or save from RTDB
+            val user = User(uid = uid, firstName = "Anonymous", lastName = "", email = "")
+            _user.value = user
+            _userName.value = "Anonymous"
+            _userEmail.value = ""
+            return
+        }
+        viewModelScope.launch {
+            try {
+                val userMap = firebaseRepository.getUser(uid)
+                if (userMap != null) {
+                    val user = User(
+                        uid = userMap["uid"] as? String ?: uid,
+                        firstName = userMap["firstName"] as? String ?: "",
+                        lastName = userMap["lastName"] as? String ?: "",
+                        email = userMap["email"] as? String ?: (firebaseUser.email ?: "")
+                    )
+                    _user.value = user
+                    _userName.value = "${user.firstName} ${user.lastName}".trim()
+                    _userEmail.value = user.email
+                } else {
+                    // User data missing in RTDB, create it from FirebaseAuth info
+                    val email = firebaseUser.email ?: ""
+                    val displayName = firebaseUser.displayName ?: ""
+                    val (firstName, lastName) = if (displayName.contains(" ")) {
+                        val parts = displayName.split(" ", limit = 2)
+                        parts[0] to parts.getOrElse(1) { "" }
+                    } else displayName to ""
+                    val user = User(uid, firstName, lastName, email)
+                    try {
+                        firebaseRepository.addUser(uid, mapOf(
+                            "uid" to uid,
+                            "firstName" to firstName,
+                            "lastName" to lastName,
+                            "email" to email
+                        ))
+                        Log.d("AuthViewModel", "User $uid created in RTDB: $user")
+                    } catch (e: Exception) {
+                        Log.e("AuthViewModel", "Failed to create user $uid in RTDB", e)
+                    }
+                    _user.value = user
+                    _userName.value = "${user.firstName} ${user.lastName}".trim()
+                    _userEmail.value = user.email
+                }
+            } catch (e: RepositoryException) {
+                Log.e("AuthViewModel", "Failed to fetch user $uid", e)
+                val user = User(uid, "", "", firebaseUser.email ?: "")
+                _user.value = user
+                _userName.value = ""
+                _userEmail.value = user.email
             }
+        }
     }
 
-    fun changePassword(newPassword: String, onResult: (Boolean, String) -> Unit) {
-        val user = FirebaseAuth.getInstance().currentUser
-        if (user != null) {
-            user.updatePassword(newPassword)
-                .addOnCompleteListener { task ->
-                    if (task.isSuccessful) {
-                        onResult(true, "Password updated successfully.")
-                    } else {
-                        onResult(false, task.exception?.message ?: "Password update failed.")
-                    }
-                }
-        } else {
-            onResult(false, "No user logged in.")
+    fun fetchUserName() {
+        viewModelScope.launch {
+            try {
+                val currentUser = firebaseService.getCurrentUser()
+                _userName.value = currentUser?.displayName ?: ""
+            } catch (e: Exception) {
+                Log.e("AuthViewModel", "Failed to fetch user name", e)
+            }
+        }
+    }
+
+    fun firebaseAuthWithGoogle(idToken: String, onResult: (Boolean, String?) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val credential: AuthCredential = GoogleAuthProvider.getCredential(idToken, null)
+                FirebaseAuth.getInstance().signInWithCredential(credential).await()
+                onResult(true, null)
+            } catch (e: Exception) {
+                onResult(false, e.message)
+            }
         }
     }
 }
