@@ -149,9 +149,9 @@ fun WeatherScreen(
                     Text(text = "7-Day Forecast for  ${weather?.name ?: city}", style = MaterialTheme.typography.titleLarge)
                     Spacer(modifier = Modifier.height(8.dp))
                     val grouped = forecast5Day.list?.groupBy { item ->
-                        SimpleDateFormat("EEEE", Locale.getDefault()).format(Date((item.dt ?: 0L) * 1000L))
+                        SimpleDateFormat("EEEE", Locale.getDefault()).format(Date(item.dt * 1000L))
                     } ?: emptyMap()
-                    grouped.forEach { (dayOfWeek: String, items: List<com.example.touristguide.network.ForecastItem>) ->
+                    grouped.forEach { (dayOfWeek, items) ->
                         val first = items.firstOrNull()
                         val temp = first?.main?.temp?.let { String.format(Locale.getDefault(), "%.1f", it) } ?: "-"
                         val desc = first?.weather?.firstOrNull()?.description ?: "-"
