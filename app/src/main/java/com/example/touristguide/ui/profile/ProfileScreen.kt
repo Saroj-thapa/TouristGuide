@@ -1,5 +1,4 @@
 package com.example.touristguide.ui.profile
-
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -17,6 +16,7 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -40,6 +40,16 @@ import androidx.compose.runtime.collectAsState
 import coil.compose.rememberAsyncImagePainter
 import com.example.touristguide.data.model.User
 import android.util.Log
+import com.example.touristguide.ui.screen.BookMarkScreen
+import com.example.touristguide.ui.screen.BookmarkedItem
+import com.example.touristguide.ui.screen.BookmarkType
+import coil.compose.AsyncImage
+import androidx.compose.ui.layout.ContentScale
+import com.cloudinary.android.MediaManager
+import com.cloudinary.android.callback.UploadCallback
+import android.widget.Toast
+import androidx.compose.ui.platform.LocalContext
+import java.util.HashMap
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -61,6 +71,18 @@ fun ProfileScreen(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         profileImageUri = uri
+    }
+
+    val context = LocalContext.current
+    // Cloudinary config (do this once, e.g. in Application class, but for demo here)
+    try {
+        val config: HashMap<String, String> = HashMap()
+        config["cloud_name"] = "dkeyvjzar"
+        config["api_key"] = "376497286791748"
+        config["api_secret"] = "I8fceZjN-e02NFkptOi8bfzsFRM"
+        MediaManager.init(context, config)
+    } catch (e: Exception) {
+        // Already initialized, ignore
     }
 
     LaunchedEffect(Unit) { authViewModel.fetchUser() }
@@ -104,15 +126,38 @@ fun ProfileScreen(
                         modifier = Modifier
                             .size(80.dp)
                             .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
+                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))
+                            .clickable {
+                                imageLauncher.launch("image/*")
+                            },
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Person,
-                            contentDescription = null,
-                            modifier = Modifier.size(40.dp),
-                            tint = MaterialTheme.colorScheme.primary
-                        )
+                        when {
+                            profileImageUri != null -> {
+                                AsyncImage(
+                                    model = profileImageUri,
+                                    contentDescription = "Profile Image",
+                                    modifier = Modifier.size(80.dp),
+                                    contentScale = ContentScale.Crop
+                                )
+                            }
+                            !user?.profileImageUrl.isNullOrBlank() -> {
+                                AsyncImage(
+                                    model = user?.profileImageUrl,
+                                    contentDescription = "Profile Image",
+                                    modifier = Modifier.size(80.dp),
+                                    contentScale = ContentScale.Crop
+                                )
+                            }
+                            else -> {
+                                Icon(
+                                    imageVector = Icons.Default.Person,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(40.dp),
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
                     }
                     Spacer(modifier = Modifier.width(16.dp))
                     Column {
@@ -226,6 +271,20 @@ fun ProfileScreen(
                             title = "Notifications",
                             subtitle = "On"
                         )
+                        // Bookmark Button
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Button(
+                            onClick = { navController.navigate(Routes.BOOKMARKS) },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Bookmark,
+                                contentDescription = "Bookmarks",
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Show Bookmarks")
+                        }
                         HorizontalDivider()
                         SettingItem(
                             icon = Icons.Default.Info,
@@ -295,6 +354,40 @@ fun ProfileScreen(
                 }
             }
         )
+    }
+
+    // Upload to Cloudinary when image is picked
+    if (profileImageUri != null) {
+        LaunchedEffect(profileImageUri) {
+            try {
+                MediaManager.get().upload(profileImageUri).callback(object : com.cloudinary.android.callback.UploadCallback {
+                    override fun onStart(requestId: String?) {}
+                    override fun onProgress(requestId: String?, bytes: Long, totalBytes: Long) {}
+                    override fun onSuccess(requestId: String?, resultData: MutableMap<Any?, Any?>?) {
+                        val url = resultData?.get("secure_url") as? String
+                        if (url != null) {
+                            profileViewModel.updateProfileImageUrl(url) { success, message ->
+                                Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                                if (success) {
+                                    authViewModel.fetchUser() // Refresh user data
+                                    profileImageUri = null // Reset local URI so UI uses saved URL
+                                }
+                            }
+                        }
+                    }
+                    override fun onError(requestId: String?, error: com.cloudinary.android.callback.ErrorInfo?) {
+                        Log.e("ProfileScreen", "Upload failed: ${error?.description}")
+                        Toast.makeText(context, "Upload failed: ${error?.description}", Toast.LENGTH_SHORT).show()
+                    }
+                    override fun onReschedule(requestId: String?, error: com.cloudinary.android.callback.ErrorInfo?) {
+                        Log.e("ProfileScreen", "Upload rescheduled: ${error?.description}")
+                    }
+                }).dispatch()
+            } catch (e: Exception) {
+                Log.e("ProfileScreen", "Image upload failed", e)
+                Toast.makeText(context, "Image upload failed: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 }
 
