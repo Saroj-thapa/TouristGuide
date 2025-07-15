@@ -1,6 +1,10 @@
 package com.example.touristguide.ui.screen
 
-
+import android.Manifest
+import android.annotation.SuppressLint
+import android.app.Application
+import android.location.Geocoder
+import android.location.Location
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -8,6 +12,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.Cloud
@@ -23,6 +28,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -46,13 +52,8 @@ import com.google.android.gms.location.LocationServices
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.launch
-import android.Manifest
-import android.annotation.SuppressLint
-import android.app.Application
-import androidx.compose.ui.platform.LocalContext
-import androidx.core.content.ContextCompat
-import android.content.pm.PackageManager
-import android.location.Location
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -64,39 +65,22 @@ fun WeatherScreen(
     weatherViewModel: WeatherViewModel = viewModel(),
     locationViewModel: LocationViewModel = viewModel()
 ) {
-    val forecast = weatherViewModel.forecast.collectAsState().value
-    val isLoading = weatherViewModel.isLoading.collectAsState().value
-    val error = weatherViewModel.error.collectAsState().value
-    val lat = locationViewModel.latitude.collectAsState().value
-    val lon = locationViewModel.longitude.collectAsState().value
+    val weather = weatherViewModel.weather.collectAsState().value
+    val weatherLoading = weatherViewModel.weatherLoading.collectAsState().value
+    val weatherError = weatherViewModel.weatherError.collectAsState().value
+    val forecast5Day = weatherViewModel.forecast5Day.collectAsState().value
+    val forecast5DayLoading = weatherViewModel.forecast5DayLoading.collectAsState().value
+    val forecast5DayError = weatherViewModel.forecast5DayError.collectAsState().value
+    val latitude = locationViewModel.latitude.collectAsState().value
+    val longitude = locationViewModel.longitude.collectAsState().value
+    var city by remember { mutableStateOf("Kathmandu") }
+    var isMyLocation by remember { mutableStateOf(false) }
     val context = LocalContext.current
-    val sdf = remember { SimpleDateFormat("EEEE", Locale.getDefault()) }
-    val locationPermissionState = rememberPermissionState(Manifest.permission.ACCESS_FINE_LOCATION)
-    val permissionStatus = locationPermissionState.status
 
-    // Request permission on first launch
+    // Fetch Kathmandu weather on first load
     LaunchedEffect(Unit) {
-        if (permissionStatus is PermissionStatus.Denied) {
-            locationPermissionState.launchPermissionRequest()
-        }
-    }
-    // When permission is granted, fetch location and update ViewModel
-    LaunchedEffect(permissionStatus) {
-        if (permissionStatus is PermissionStatus.Granted) {
-            val fusedLocationClient = LocationServices.getFusedLocationProviderClient(context)
-            fusedLocationClient.lastLocation.addOnSuccessListener { loc ->
-                if (loc != null) {
-                    locationViewModel.updateLocation(loc.latitude, loc.longitude)
-                }
-            }
-        }
-    }
-
-    // Fetch weather when location is available
-    LaunchedEffect(lat, lon) {
-        if (lat != null && lon != null) {
-            weatherViewModel.fetch7DayForecast(lat, lon)
-        }
+        weatherViewModel.fetchWeather("Kathmandu")
+        weatherViewModel.fetch5DayForecast("Kathmandu")
     }
 
     Scaffold(
@@ -113,143 +97,206 @@ fun WeatherScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .verticalScroll(rememberScrollState())
                 .padding(innerPadding)
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            LazyColumn(
-                modifier = Modifier.padding(5.dp)
-            ) {
-                item {
-                    if (isLoading) {
-                        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                            CircularProgressIndicator()
-                        }
-                    } else if (error != null) {
-                        Text(
-                            text = error,
-                            color = Color.Red,
-                            modifier = Modifier.padding(8.dp)
-                        )
-                    } else if (forecast != null && forecast.daily.isNotEmpty()) {
-                        // Current Weather (today)
-                        val today = forecast.daily.first()
-                        Text(
-                            text = "Current Weather",
-                            style = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                        )
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(top = 16.dp)
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(64.dp)
-                                    .background(Color.LightGray)
-                            ) {
-                                // You can use an icon or image here
-                                Icon(
-                                    imageVector = Icons.Default.Cloud,
-                                    contentDescription = "Weather Icon",
-                                    tint = Color(0xFF0288D1),
-                                    modifier = Modifier.size(36.dp)
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Button(onClick = {
+                    if (latitude != null && longitude != null) {
+                        isMyLocation = true
+                        city = ""
+                        weatherViewModel.fetchWeather("$latitude,$longitude")
+                        weatherViewModel.fetch5DayForecast("$latitude,$longitude")
+                    }
+                }) {
+                    Text("My Location")
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                OutlinedTextField(
+                    value = city,
+                    onValueChange = { city = it },
+                    label = { Text("Enter city name", fontSize = 18.sp) },
+                    singleLine = true,
+                    modifier = Modifier.weight(1f),
+                    textStyle = TextStyle(fontSize = 15.sp)
+                )
+            }
+            // Move the Get Weather button below and center it
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+                Button(onClick = {
+                    isMyLocation = false
+                    weatherViewModel.fetchWeather(city)
+                    weatherViewModel.fetch5DayForecast(city)
+                }, enabled = city.isNotBlank()) {
+                    Icon(Icons.Default.Search, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Get Weather")
+                }
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+            // Move search UI below the weather card
+            when {
+                forecast5DayLoading -> {
+                    CircularProgressIndicator()
+                }
+                forecast5DayError != null -> {
+                    Text(text = forecast5DayError, color = Color.Red)
+                }
+                forecast5Day?.list != null -> {
+                    Text(text = "7-Day Forecast for  ${weather?.name ?: city}", style = MaterialTheme.typography.titleLarge)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    val grouped = forecast5Day.list?.groupBy { item ->
+                        SimpleDateFormat("EEEE", Locale.getDefault()).format(Date((item.dt ?: 0L) * 1000L))
+                    } ?: emptyMap()
+                    grouped.forEach { (dayOfWeek: String, items: List<com.example.touristguide.network.ForecastItem>) ->
+                        val first = items.firstOrNull()
+                        val temp = first?.main?.temp?.let { String.format(Locale.getDefault(), "%.1f", it) } ?: "-"
+                        val desc = first?.weather?.firstOrNull()?.description ?: "-"
+                        val icon = first?.weather?.firstOrNull()?.icon
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 8.dp)) {
+                            if (icon != null) {
+                                val iconUrl = "https://openweathermap.org/img/wn/${icon}@2x.png"
+                                androidx.compose.foundation.Image(
+                                    painter = coil.compose.rememberAsyncImagePainter(iconUrl),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(48.dp)
                                 )
                             }
-                            Spacer(modifier = Modifier.width(5.dp))
+                            Spacer(modifier = Modifier.width(12.dp))
                             Column {
-                                Text(
-                                    text = today.weather.firstOrNull()?.main ?: "-",
-                                    fontSize = 24.sp,
-                                    modifier = Modifier.padding(top = 5.dp)
-                                )
-                                Text(today.weather.firstOrNull()?.description ?: "-")
-                                Text("${String.format("%.1f", today.temp.day - 273.15)}°C")
+                                Text(text = dayOfWeek, fontWeight = FontWeight.Bold)
+                                Text(text = "$temp°C, $desc")
+                                Text(text = "Humidity: ${first?.main?.humidity ?: "-"}%  Wind: ${first?.wind?.speed ?: "-"} m/s", fontSize = 12.sp)
                             }
                         }
-                        HorizontalDivider(
-                            color = Color.Black.copy(alpha = 0.1f),
-                            thickness = 1.dp,
-                            modifier = Modifier.padding(vertical = 10.dp)
-                        )
-                        Spacer(modifier = Modifier.height(5.dp))
-                        Text(
-                            text = "Forecast for 7 Days",
-                            style = TextStyle(fontSize = 15.sp, fontWeight = FontWeight.Bold)
-                        )
-                        forecast.daily.take(7).forEachIndexed { idx, day ->
-                            val date = Date(day.dt * 1000)
-                            val dayName = sdf.format(date)
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.padding(top = 16.dp)
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(64.dp)
-                                        .clip(RoundedCornerShape(16.dp))
-                                        .background(
-                                            Brush.verticalGradient(
-                                                colors = listOf(Color(0xFFB2EBF2), Color(0xFF80DEEA))
-                                            )
-                                        ),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Cloud,
-                                        contentDescription = "Weather Icon",
-                                        tint = Color(0xFF0288D1),
-                                        modifier = Modifier.size(36.dp)
-                                    )
-                                }
-                                Spacer(modifier = Modifier.width(12.dp))
-                                Column {
-                                    Text(
-                                        text = "Day ${idx + 1}",
-                                        style = TextStyle(
-                                            fontSize = 14.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = Color(0xFF0288D1)
-                                        )
-                                    )
-                                    Text(
-                                        text = dayName,
-                                        style = TextStyle(
-                                            fontSize = 13.sp,
-                                            color = Color(0xFF616161)
-                                        )
-                                    )
-                                    Box(
-                                        modifier = Modifier
-                                            .padding(top = 5.dp)
-                                            .background(Color(0xFFE0E0E0), shape = RoundedCornerShape(8.dp))
-                                            .padding(horizontal = 12.dp, vertical = 4.dp)
-                                    ) {
-                                        Text(
-                                            text = day.weather.firstOrNull()?.description ?: "-",
-                                            fontSize = 8.sp,
-                                            color = Color.Black
-                                        )
-                                    }
-                                    Text(
-                                        text = "${String.format("%.1f", day.temp.day - 273.15)}°C",
-                                        fontSize = 16.sp,
-                                        modifier = Modifier.padding(top = 5.dp)
-                                    )
-                                }
+                        Divider()
+                    }
+                }
+                weatherLoading -> {
+                    CircularProgressIndicator()
+                }
+                weatherError != null -> {
+                    Text(text = weatherError, color = Color.Red)
+                }
+                weather != null -> {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                        elevation = CardDefaults.cardElevation(6.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(20.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = "Weather in ${weather.name}",
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(bottom = 8.dp)
+                            )
+                            weather.weather?.firstOrNull()?.icon?.let { icon ->
+                                val iconUrl = "https://openweathermap.org/img/wn/${icon}@2x.png"
+                                androidx.compose.foundation.Image(
+                                    painter = coil.compose.rememberAsyncImagePainter(iconUrl),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(80.dp)
+                                )
                             }
-                            HorizontalDivider(
-                                color = Color.Black.copy(alpha = 0.1f),
-                                thickness = 1.dp,
-                                modifier = Modifier.padding(vertical = 10.dp)
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text(
+                                text = weather.weather?.firstOrNull()?.main ?: "-",
+                                fontSize = 22.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Text(
+                                text = weather.weather?.firstOrNull()?.description ?: "-",
+                                fontSize = 16.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(
+                                text = "Temperature: ${weather.main?.temp?.let { String.format("%.1f", it) } ?: "-"}°C",
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Text(
+                                text = "Humidity: ${weather.main?.humidity ?: "-"}%",
+                                fontSize = 16.sp
+                            )
+                            Text(
+                                text = "Wind Speed: ${weather.wind?.speed ?: "-"} m/s",
+                                fontSize = 16.sp
                             )
                         }
-                    } else if (!isLoading && error == null && (forecast == null || forecast.daily.isEmpty())) {
-                        Text("No weather data available.", color = Color.Gray, modifier = Modifier.padding(8.dp))
-                    } else if (!isLoading && error != null) {
-                        Text("Error: $error", color = Color.Red, modifier = Modifier.padding(8.dp))
-                    } else {
-                        Text(
-                            text = "Waiting for location permission...",
-                            style = TextStyle(fontSize = 14.sp, color = Color.Gray)
-                        )
+                    }
+                    Spacer(modifier = Modifier.height(24.dp))
+                    // Nicer search city UI
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                        elevation = CardDefaults.cardElevation(2.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = "Search City Weather",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(bottom = 8.dp)
+                            )
+                            OutlinedTextField(
+                                value = city,
+                                onValueChange = { city = it },
+                                label = { Text("Enter city name", fontSize = 18.sp) },
+                                singleLine = true,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(8.dp)),
+                                textStyle = TextStyle(fontSize = 20.sp)
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Button(
+                                    onClick = {
+                                        if (latitude != null && longitude != null) {
+                                            isMyLocation = true
+                                            city = ""
+                                            weatherViewModel.fetchWeather("$latitude,$longitude")
+                                            weatherViewModel.fetch5DayForecast("$latitude,$longitude")
+                                        }
+                                    },
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Text("My Location")
+                                }
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Button(
+                                    onClick = {
+                                        isMyLocation = false
+                                        weatherViewModel.fetchWeather(city)
+                                        weatherViewModel.fetch5DayForecast(city)
+                                    },
+                                    enabled = city.isNotBlank(),
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Icon(Icons.Default.Search, contentDescription = null)
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("Get Weather")
+                                }
+                            }
+                        }
                     }
                 }
             }
