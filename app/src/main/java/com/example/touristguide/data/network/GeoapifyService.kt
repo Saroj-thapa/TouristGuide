@@ -28,7 +28,12 @@ data class Properties(
     val state: String?,
     val district: String?,
     val suburb: String?,
-    val amenity: String?
+    val amenity: String?,
+    // Added fields for richer restaurant info
+    val cuisine: String?,
+    val opening_hours: String?,
+    val website: String?,
+    val phone: String?
 )
 
 interface GeoapifyService {
@@ -38,4 +43,14 @@ interface GeoapifyService {
         @Query("lon") lon: Double,
         @Query("apiKey") apiKey: String
     ): Call<GeoapifyResponse>
+
+    // New: Search for places (restaurants, food, etc.) near a location
+    @GET("v2/places")
+    fun searchNearbyPlaces(
+        @Query("categories") categories: String, // e.g., "catering.restaurant,catering.fast_food"
+        @Query("filter") filter: String, // e.g., "circle:lon,lat,radius"
+        @Query("limit") limit: Int = 20,
+        @Query("apiKey") apiKey: String
+    ): Call<GeoapifyResponse>
 }
+
