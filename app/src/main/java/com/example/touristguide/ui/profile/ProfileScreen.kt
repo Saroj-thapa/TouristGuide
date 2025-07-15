@@ -66,6 +66,7 @@ fun ProfileScreen(
     var passwordMessage by remember { mutableStateOf("") }
     var profileImageUri by remember { mutableStateOf<Uri?>(null) }
     val isAnonymous by authViewModel.isAnonymous.collectAsState()
+    var showPasswordUpdatedToast by remember { mutableStateOf(false) }
 
     val imageLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -342,7 +343,10 @@ fun ProfileScreen(
                 Button(onClick = {
                     profileViewModel.changePassword(newPassword) { success, message ->
                         passwordMessage = message
-                        if (success) showChangePasswordDialog = false
+                        if (success) {
+                            showChangePasswordDialog = false
+                            showPasswordUpdatedToast = true
+                        }
                     }
                 }) {
                     Text("Update")
@@ -354,6 +358,13 @@ fun ProfileScreen(
                 }
             }
         )
+    }
+
+    if (showPasswordUpdatedToast) {
+        LaunchedEffect(showPasswordUpdatedToast) {
+            Toast.makeText(context, "New password is updated", Toast.LENGTH_SHORT).show()
+            showPasswordUpdatedToast = false
+        }
     }
 
     // Upload to Cloudinary when image is picked
