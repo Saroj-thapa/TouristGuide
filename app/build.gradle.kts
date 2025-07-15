@@ -61,6 +61,7 @@ android {
 }
 
 dependencies {
+    implementation("com.cloudinary:cloudinary-android:2.1.0")
     // Firebase BoM
     implementation(platform("com.google.firebase:firebase-bom:33.0.0"))
 
