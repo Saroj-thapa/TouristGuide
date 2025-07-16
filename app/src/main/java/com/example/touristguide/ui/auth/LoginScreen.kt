@@ -1,5 +1,6 @@
 package com.example.touristguide.ui.auth
 
+import android.content.Context
 import android.widget.Toast
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
@@ -34,6 +35,42 @@ import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.VisualTransformation
+
+fun saveRememberMe(context: Context, value: Boolean, email: String? = null) {
+    val prefs = context.getSharedPreferences("auth_prefs", Context.MODE_PRIVATE)
+    prefs.edit().putBoolean("remember_me", value)
+        .apply {
+            if (value && email != null) {
+                putString("remembered_email", email)
+            }
+        }
+        .apply()
+}
+
+fun getRememberedEmail(context: Context): String? {
+    val prefs = context.getSharedPreferences("auth_prefs", Context.MODE_PRIVATE)
+    return prefs.getString("remembered_email", "")
+}
+
+fun isRememberMeEnabled(context: Context): Boolean {
+    val prefs = context.getSharedPreferences("auth_prefs", Context.MODE_PRIVATE)
+    return prefs.getBoolean("remember_me", false)
+}
+
+fun isLoggedIn(context: Context): Boolean {
+    val prefs = context.getSharedPreferences("auth_prefs", Context.MODE_PRIVATE)
+    return prefs.getBoolean("is_logged_in", false)
+}
+
+fun isLoggedOut(context: Context): Boolean {
+    val prefs = context.getSharedPreferences("auth_prefs", Context.MODE_PRIVATE)
+    return prefs.getBoolean("logged_out", false)
+}
+
+fun clearLoggedOut(context: Context) {
+    val prefs = context.getSharedPreferences("auth_prefs", Context.MODE_PRIVATE)
+    prefs.edit().putBoolean("logged_out", false).apply()
+}
 
 @Composable
 fun AuthScreenContent(
@@ -145,9 +182,21 @@ fun LoginScreen(navController: NavController, viewModel: AuthViewModel = viewMod
         }
     }
 
+    // Check if user is logged out and force login
+    LaunchedEffect(Unit) {
+        if (isLoggedOut(context)) {
+            // Stay on login screen, do not auto-navigate
+        } else if (isRememberMeEnabled(context) && isLoggedIn(context)) {
+            navController.navigate(Routes.HOME) {
+                popUpTo(Routes.LOGIN) { inclusive = true }
+            }
+        }
+    }
+
     LaunchedEffect(authState) {
         authState?.let { result ->
             if (result.isSuccess) {
+                clearLoggedOut(context)
                 navController.navigate(Routes.HOME) {
                     popUpTo(Routes.LOGIN) { inclusive = true }
                 }
@@ -162,6 +211,14 @@ fun LoginScreen(navController: NavController, viewModel: AuthViewModel = viewMod
             navController.navigate(Routes.HOME) {
                 popUpTo(Routes.LOGIN) { inclusive = true }
             }
+        }
+    }
+
+    // Autofill email if Remember Me is enabled
+    LaunchedEffect(Unit) {
+        if (isRememberMeEnabled(context)) {
+            rememberMe = true
+            email = getRememberedEmail(context) ?: ""
         }
     }
 
@@ -226,7 +283,10 @@ fun LoginScreen(navController: NavController, viewModel: AuthViewModel = viewMod
         }
         Spacer(Modifier.height(16.dp))
         Button(
-            onClick = { viewModel.login(email, password) },
+            onClick = {
+                saveRememberMe(context, rememberMe, if (rememberMe) email else null)
+                viewModel.login(email, password)
+            },
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp)
         ) {
