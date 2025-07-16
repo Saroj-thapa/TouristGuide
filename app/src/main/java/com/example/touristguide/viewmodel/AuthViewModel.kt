@@ -1,4 +1,5 @@
 package com.example.touristguide.viewmodel
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.touristguide.data.repository.FirebaseService
@@ -86,11 +87,19 @@ class AuthViewModel(
         }
     }
 
-    fun logout() {
+    fun logout(context: Context) {
         firebaseService.logout()
         _userName.value = ""
         _user.value = null
         _isAnonymous.value = false
+        // Set logged_out flag in SharedPreferences
+        val prefs = context.getSharedPreferences("auth_prefs", Context.MODE_PRIVATE)
+        prefs.edit()
+            .putBoolean("logged_out", true)
+            .putBoolean("is_logged_in", false)
+            .putBoolean("remember_me", false)
+            .remove("remembered_email")
+            .apply()
     }
 
     fun isUserLoggedIn(): Boolean = firebaseService.isUserLoggedIn()
