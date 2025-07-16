@@ -299,6 +299,7 @@ fun ProfileScreen(
             // Logout Button
             Button(
                 onClick = {
+                    authViewModel.logout(context)
                     navController.navigate(Routes.LOGIN) {
                         popUpTo(0)
                         launchSingleTop = true
