@@ -24,6 +24,7 @@ import com.google.accompanist.permissions.rememberPermissionState
 import com.google.android.gms.location.LocationServices
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.platform.LocalContext
+import com.example.touristguide.ui.auth.isLoggedIn
 
 class MainActivity : ComponentActivity() {
     @OptIn(ExperimentalPermissionsApi::class)
@@ -62,8 +63,8 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
-                    val guestId = GuestManager.getOrCreateGuestId(context)
-                    val startDestination = if (guestId.isNotEmpty()) Routes.HOME else Routes.SPLASH
+                    val rememberMe = com.example.touristguide.ui.auth.isRememberMeEnabled(context)
+                    val startDestination = if (rememberMe) Routes.HOME else Routes.LOGIN
                     NavigationGraph(navController, startDestination = startDestination)
                 }
             }
