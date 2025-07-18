@@ -1,6 +1,10 @@
 package com.example.touristguide.ui.screen
 
-import androidx.compose.foundation.Image
+import android.Manifest
+import android.content.pm.PackageManager
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -8,85 +12,116 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Hotel
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.res.painterResource
-import androidx.compose.material.icons.filled.Hotel
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.navigation.NavController
-import androidx.navigation.compose.rememberNavController
-import com.example.touristguide.ui.theme.TouristGuideTheme
-import com.example.touristguide.ui.components.CommonTopBar
-import com.example.touristguide.ui.components.CommonBottomBar
-import androidx.compose.ui.tooling.preview.Preview
-import com.example.touristguide.data.model.Hotel
+import androidx.core.app.ActivityCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavController
+import com.example.touristguide.data.model.Hotel
+import com.example.touristguide.ui.components.CommonBottomBar
+import com.example.touristguide.ui.components.CommonTopBar
+import com.example.touristguide.ui.theme.*
 import com.example.touristguide.viewmodel.HotelsViewModel
-import com.example.touristguide.utils.Constants
-import com.google.maps.android.compose.GoogleMap
-import com.google.maps.android.compose.Marker
-import com.google.maps.android.compose.rememberCameraPositionState
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import com.example.touristguide.viewmodel.LocationViewModel
 import com.example.touristguide.viewmodel.FirebaseViewModel
 import com.google.firebase.auth.FirebaseAuth
-
-private val hotels = listOf(
-    Hotel("1", "Thamel Guest House", "Thamel, Kathmandu", 1500, 4, 27.7156, 85.3123, true),
-    Hotel("2", "Lake View Resort", "Pokhara", 2000, 5, 28.2096, 83.9856, true),
-    Hotel("3", "Jungle Lodge", "Chitwan", 1800, 4, 27.5341, 84.4525, true),
-    Hotel("4", "Mountain Retreat", "Nagarkot", 2500, 5, 27.7172, 85.5200, true)
-)
+import com.example.touristguide.ui.components.PlaceMap
+import org.osmdroid.util.GeoPoint
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.material.icons.filled.Wifi
+import androidx.compose.material.icons.filled.Language
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import android.util.Log
+import androidx.compose.ui.layout.ContentScale
+import coil.compose.AsyncImage
+import androidx.compose.ui.draw.clip
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HotelsScreen(
     navController: NavController,
-    hotelsViewModel: HotelsViewModel = viewModel(),
+    hotelsViewModel: HotelsViewModel,
     locationViewModel: LocationViewModel = viewModel(),
     firebaseViewModel: FirebaseViewModel = viewModel()
 ) {
-    var searchQuery by remember { mutableStateOf("") }
-    val filteredHotels = hotels.filter {
-        it.name.contains(searchQuery, ignoreCase = true) || it.location.contains(searchQuery, ignoreCase = true)
-    }
-    val geoapifyData = hotelsViewModel.geoapifyData.collectAsState().value
-    val isLoading = hotelsViewModel.isLoading.collectAsState().value
-    val lat = locationViewModel.latitude.collectAsState().value
-    val lon = locationViewModel.longitude.collectAsState().value
-    val cameraPositionState = rememberCameraPositionState {
-        position = com.google.android.gms.maps.model.CameraPosition.fromLatLngZoom(
-            com.google.android.gms.maps.model.LatLng(lat ?: Constants.NEPAL_LAT, lon ?: Constants.NEPAL_LON), 12f
-        )
-    }
-    // Fetch data when user location is available
-    LaunchedEffect(lat, lon) {
-        if (lat != null && lon != null) {
-            hotelsViewModel.fetchHotelLocation(lat, lon)
+    val context = LocalContext.current
+    // Location permission
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+        onResult = { isGranted ->
+            if (!isGranted) {
+                Toast.makeText(context, "Location permission denied", Toast.LENGTH_SHORT).show()
+            }
+        }
+    )
+    LaunchedEffect(Unit) {
+        if (ActivityCompat.checkSelfPermission(
+                context,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
         }
     }
+    // Get user location (simulate for now if not available)
+    val lat = locationViewModel.latitude.collectAsState().value ?: 27.7172
+    val lon = locationViewModel.longitude.collectAsState().value ?: 85.3240
+    // Fetch hotels when location or filters change
+    val radius by hotelsViewModel.radius.collectAsState()
+    val openNow by hotelsViewModel.openNow.collectAsState()
+    val websiteOnly by hotelsViewModel.websiteOnly.collectAsState()
+    val minRating by hotelsViewModel.minRating.collectAsState()
+    val priceLevel by hotelsViewModel.priceLevel.collectAsState()
+    val amenities by hotelsViewModel.amenities.collectAsState()
+    LaunchedEffect(lat, lon, radius, openNow, websiteOnly, minRating, priceLevel, amenities) {
+        hotelsViewModel.fetchHotels(lat, lon)
+    }
+    // UI state
+    var searchQuery by remember { mutableStateOf("") }
+    val hotels = hotelsViewModel.hotels.collectAsState().value
+    val isLoading = hotelsViewModel.isLoading.collectAsState().value
+    val error = hotelsViewModel.error.collectAsState().value
+    val filteredHotels = hotels.filter {
+        (it.name?.contains(searchQuery, ignoreCase = true) == true) ||
+        (it.location?.contains(searchQuery, ignoreCase = true) == true)
+    }
+    // Debug: print hotel IDs
+    Log.d("HotelDebug", "Hotel IDs in list: ${hotels.map { it.id }}")
     val userId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
-    val userPlans = firebaseViewModel.userPlans.collectAsState().value
     val bookmarks = firebaseViewModel.bookmarks.collectAsState().value
-
+    // Define hotelPlaces before using it in the Card
+    val hotelPlaces = filteredHotels.map {
+        com.example.touristguide.data.model.Place(
+            id = it.id,
+            name = it.name,
+            address = it.location,
+            latitude = it.lat,
+            longitude = it.lon,
+            category = com.example.touristguide.data.model.PlaceCategory.ACCOMMODATION,
+            imageUrl = null
+        )
+    }
+    // UI
     Scaffold(
-        topBar = {
-            CommonTopBar(title = "Explore Hotels", navController = navController)
-        },
-        bottomBar = {
-            CommonBottomBar(navController = navController)
-        },
-        containerColor = Color(0xFFF3F4F6)
+        topBar = { CommonTopBar(title = "Explore Hotels", navController = navController) },
+        bottomBar = { CommonBottomBar(navController = navController) },
+        containerColor = BackgroundLight
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -94,141 +129,176 @@ fun HotelsScreen(
                 .padding(paddingValues)
                 .padding(16.dp)
         ) {
+            // Map at the top (smaller, inside a Card)
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(120.dp)
+                    .padding(bottom = 8.dp),
+                shape = RoundedCornerShape(16.dp),
+                elevation = CardDefaults.cardElevation(6.dp),
+            ) {
+                PlaceMap(
+                    context = LocalContext.current,
+                    places = hotelPlaces,
+                    currentLocation = org.osmdroid.util.GeoPoint(lat, lon),
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
                 label = { Text("Search hotels or locations") },
-                modifier = Modifier
-                    .fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),
                 singleLine = true,
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                    focusedBorderColor = md_theme_light_primary,
                     unfocusedBorderColor = Color.LightGray
                 )
             )
             Spacer(modifier = Modifier.height(12.dp))
-            // Hotel Info Section
-            val hotelProps = geoapifyData?.features?.firstOrNull()?.properties
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier
-                        .size(64.dp)
-                        .background(Color.LightGray, RoundedCornerShape(8.dp)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Hotel,
-                        contentDescription = null,
-                        tint = Color.Gray,
-                        modifier = Modifier.size(36.dp)
-                    )
-                }
-                Spacer(Modifier.width(12.dp))
-                Column {
-                    Text(
-                        text = hotelProps?.name ?: "Unknown Hotel",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 18.sp
-                    )
-                    Text(
-                        text = hotelProps?.amenity ?: hotelProps?.city ?: hotelProps?.country ?: "Info not available",
-                        fontSize = 14.sp,
-                        color = Color.Gray
-                    )
-                }
-            }
-            Spacer(modifier = Modifier.height(12.dp))
-            // Map and Address Section
-            Text("Hotel Location", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            // Modern Filter Bar
+            HotelFilterBar(
+                openNow = openNow,
+                onOpenNowChange = { hotelsViewModel.setOpenNow(it) },
+                websiteOnly = websiteOnly,
+                onWebsiteOnlyChange = { hotelsViewModel.setWebsiteOnly(it) },
+                minRating = minRating,
+                onMinRatingChange = { hotelsViewModel.setMinRating(it) },
+                priceLevel = priceLevel,
+                onPriceLevelChange = { hotelsViewModel.setPriceLevel(it) },
+                amenities = amenities,
+                onAmenitiesChange = { hotelsViewModel.setAmenities(it) }
+            )
             Spacer(modifier = Modifier.height(8.dp))
-            val address = hotelProps?.formatted
-            if (address != null) {
-                Text("Address: $address", fontSize = 14.sp, color = Color.DarkGray)
+            if (isLoading) {
+                Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
+            } else if (error != null) {
+                Text("Error: $error", color = Color.Red)
+            } else if (filteredHotels.isEmpty()) {
+                Text("No hotels found.", color = Color.Gray)
             } else {
-                Text("Loading address...", fontSize = 14.sp, color = Color.Gray)
-            }
-            Spacer(modifier = Modifier.height(8.dp))
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(180.dp)
-                    .background(Color.LightGray, RoundedCornerShape(12.dp)),
-                contentAlignment = Alignment.Center
-            ) {
-                GoogleMap(
-                    modifier = Modifier.matchParentSize(),
-                    cameraPositionState = cameraPositionState
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.weight(1f)
                 ) {
-                    Marker(
-                        state = com.google.maps.android.compose.MarkerState(
-                            position = com.google.android.gms.maps.model.LatLng(lat ?: Constants.NEPAL_LAT, lon ?: Constants.NEPAL_LON)
-                        ),
-                        title = hotelProps?.name ?: "Hotel Location"
-                    )
-                }
-            }
-            Spacer(modifier = Modifier.height(12.dp))
-            Text("Recommended for you", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-            Spacer(modifier = Modifier.height(8.dp))
-            LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.fillMaxSize()
-            ) {
-                items(filteredHotels) { hotel ->
-                    HotelCard(hotel = hotel) {
-                        navController.navigate("hotelDetails/${hotel.id}")
+                    if (!isLoading && hotels.isNotEmpty()) {
+                        items(filteredHotels) { hotel ->
+                            HotelCard(
+                                hotel = hotel,
+                                isBookmarked = bookmarks.any { (it["name"] as? String) == hotel.name },
+                                onBookmark = {
+                                    if (userId == null) {
+                                        Toast.makeText(context, "Please log in to bookmark", Toast.LENGTH_SHORT).show()
+                                        return@HotelCard
+                                    }
+                                    val name = hotel.name.orEmpty()
+                                    val address = hotel.location.orEmpty()
+                                    if (name.isBlank() || address.isBlank()) {
+                                        Toast.makeText(context, "Missing hotel name or address", Toast.LENGTH_SHORT).show()
+                                        return@HotelCard
+                                    }
+                                    val bookmarkId = "${name}_${hotel.lat}_${hotel.lon}".replace(".", "_")
+                                    val bookmarkData = mapOf(
+                                        "name" to name,
+                                        "address" to address,
+                                        "type" to "HOTEL"
+                                    )
+                                    try {
+                                        firebaseViewModel.addBookmark(userId, bookmarkId, bookmarkData)
+                                        android.util.Log.d("BookmarkDebug", "Tried to add hotel bookmark for $userId at $bookmarkId: $bookmarkData")
+                                    } catch (e: Exception) {
+                                        android.util.Log.e("BookmarkDebug", "Failed to add hotel bookmark: ${e.message}")
+                                        Toast.makeText(context, "Failed to bookmark: ${e.message}", Toast.LENGTH_SHORT).show()
+                                    }
+                                },
+                                onClick = {
+                                    Log.d("HotelDebug", "Navigating to hotelDetails/${hotel.id}")
+                                    navController.navigate("hotelDetails/${hotel.id}")
+                                }
+                            )
+                        }
                     }
                 }
             }
-            // Example: Add Bookmark and Add to Plan buttons for each hotel
-            hotels.forEach { hotel ->
-                Row {
-                    Button(onClick = {
-                        val bookmarkId = "bookmark_${System.currentTimeMillis()}"
-                        val bookmarkData = mapOf(
-                            "userId" to userId,
-                            "name" to hotel.name,
-                            "address" to hotel.location, // Assuming location is the address for this example
-                            "lat" to hotel.lat,
-                            "lon" to hotel.lon
-                        )
-                        firebaseViewModel.addBookmark(userId, bookmarkId, bookmarkData)
-                    }) { Text("Bookmark") }
-                    Spacer(Modifier.width(8.dp))
-                    Button(onClick = {
-                        val planId = "plan_${System.currentTimeMillis()}"
-                        val planData = mapOf(
-                            "userId" to userId,
-                            "name" to hotel.name,
-                            "address" to hotel.location, // Assuming location is the address for this example
-                            "lat" to hotel.lat,
-                            "lon" to hotel.lon
-                        )
-                        firebaseViewModel.savePlan(planId, planData)
-                    }) { Text("Add to Plan") }
-                }
+            HotelInfoSummary(filteredHotels)
+        }
+    }
+}
+
+@Composable
+fun HotelFilterBar(
+    openNow: Boolean,
+    onOpenNowChange: (Boolean) -> Unit,
+    websiteOnly: Boolean,
+    onWebsiteOnlyChange: (Boolean) -> Unit,
+    minRating: Int,
+    onMinRatingChange: (Int) -> Unit,
+    priceLevel: String?,
+    onPriceLevelChange: (String?) -> Unit,
+    amenities: List<String>,
+    onAmenitiesChange: (List<String>) -> Unit
+) {
+    val scrollState = rememberScrollState()
+    ElevatedCard(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp)
+            .shadow(6.dp, RoundedCornerShape(16.dp)),
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.elevatedCardElevation(6.dp),
+        colors = CardDefaults.elevatedCardColors(containerColor = CloudWhite)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(scrollState)
+                .padding(horizontal = 8.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Remove Open now filter UI
+            // Website only
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Filled.Language, contentDescription = null, tint = SkyBlue, modifier = Modifier.size(16.dp))
+                Text("Web", fontSize = 13.sp, modifier = Modifier.padding(start = 2.dp))
+                Switch(checked = websiteOnly, onCheckedChange = onWebsiteOnlyChange, modifier = Modifier.size(28.dp))
             }
-            // Display user's bookmarks
-            Text("My Bookmarked Hotels", fontWeight = FontWeight.Bold)
-            if (bookmarks.isEmpty()) {
-                Text("No hotel bookmarks yet.", color = Color.Gray, modifier = Modifier.padding(8.dp))
-            } else {
-                bookmarks.forEach { bookmark ->
-                    val name = bookmark["name"] as? String ?: "Unknown"
-                    val address = bookmark["address"] as? String ?: ""
-                    Text("$name - $address")
-                }
+            Spacer(Modifier.width(8.dp))
+            // Min rating
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Filled.Star, contentDescription = null, tint = SunsetOrange, modifier = Modifier.size(16.dp))
+                Text("Rating", fontSize = 13.sp, modifier = Modifier.padding(start = 2.dp))
+                Slider(
+                    value = minRating.toFloat(),
+                    onValueChange = { onMinRatingChange(it.toInt()) },
+                    valueRange = 0f..5f,
+                    steps = 5,
+                    modifier = Modifier.width(60.dp)
+                )
             }
-            // Display user's plans
-            Text("My Hotel Plans", fontWeight = FontWeight.Bold)
-            if (userPlans.isEmpty()) {
-                Text("No saved hotel plans yet.", color = Color.Gray, modifier = Modifier.padding(8.dp))
-            } else {
-                userPlans.forEach { plan ->
-                    val name = plan["name"] as? String ?: "Unknown"
-                    val address = plan["address"] as? String ?: ""
-                    Text("$name - $address")
+            Spacer(Modifier.width(8.dp))
+            // Price chips
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Filled.Star, contentDescription = null, tint = SunsetOrange, modifier = Modifier.size(16.dp))
+                PriceChip(label = "Budget", selected = priceLevel == "budget") { onPriceLevelChange(if (priceLevel == "budget") null else "budget") }
+                PriceChip(label = "Mid", selected = priceLevel == "mid") { onPriceLevelChange(if (priceLevel == "mid") null else "mid") }
+                PriceChip(label = "Luxury", selected = priceLevel == "luxury") { onPriceLevelChange(if (priceLevel == "luxury") null else "luxury") }
+            }
+            Spacer(Modifier.width(8.dp))
+            // Amenities chips
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Filled.Wifi, contentDescription = null, tint = LeafGreen, modifier = Modifier.size(16.dp))
+                AmenityChip(label = "WiFi", selected = amenities.contains("wifi")) {
+                    onAmenitiesChange(if (amenities.contains("wifi")) amenities - "wifi" else amenities + "wifi")
+                }
+                AmenityChip(label = "Parking", selected = amenities.contains("parking")) {
+                    onAmenitiesChange(if (amenities.contains("parking")) amenities - "parking" else amenities + "parking")
+                }
+                AmenityChip(label = "Breakfast", selected = amenities.contains("breakfast")) {
+                    onAmenitiesChange(if (amenities.contains("breakfast")) amenities - "breakfast" else amenities + "breakfast")
                 }
             }
         }
@@ -236,68 +306,114 @@ fun HotelsScreen(
 }
 
 @Composable
-fun HotelCard(hotel: Hotel, onClick: () -> Unit) {
+fun PriceChip(label: String, selected: Boolean, onClick: () -> Unit) {
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        color = if (selected) SkyBlue else Color.LightGray,
+        modifier = Modifier
+            .padding(horizontal = 4.dp)
+            .clickable { onClick() }
+    ) {
+        Text(label, color = if (selected) Color.White else Color.Black, modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp))
+    }
+}
+
+@Composable
+fun AmenityChip(label: String, selected: Boolean, onClick: () -> Unit) {
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        color = if (selected) LeafGreen else Color.LightGray,
+        modifier = Modifier
+            .padding(horizontal = 4.dp)
+            .clickable { onClick() }
+    ) {
+        Text(label, color = if (selected) Color.White else Color.Black, modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp))
+    }
+}
+
+@Composable
+fun HotelCard(
+    hotel: Hotel,
+    isBookmarked: Boolean,
+    onBookmark: () -> Unit,
+    onClick: () -> Unit
+) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onClick() },
         shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(4.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White)
+        colors = CardDefaults.cardColors(containerColor = SurfaceLight)
     ) {
         Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(
                 modifier = Modifier
                     .size(60.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(
-                        Brush.verticalGradient(
-                            listOf(Color(0xFFBBDEFB), Color(0xFFE3F2FD))
-                        )
-                    ),
+                    .background(SkyBlue, RoundedCornerShape(12.dp)),
                 contentAlignment = Alignment.Center
             ) {
-                Image(
-                    painter = painterResource(id = android.R.drawable.ic_menu_myplaces),
-                    contentDescription = null,
-                    modifier = Modifier.size(32.dp)
-                )
+                if (hotel.imageUrl != null) {
+                    AsyncImage(
+                        model = hotel.imageUrl,
+                        contentDescription = hotel.name,
+                        modifier = Modifier.size(60.dp).clip(RoundedCornerShape(12.dp)),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.Hotel,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(32.dp)
+                    )
+                }
             }
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(hotel.name, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                Text(hotel.location, fontSize = 14.sp, color = Color.Gray)
+                Text(hotel.name.orEmpty(), fontWeight = FontWeight.Bold, fontSize = 16.sp, color = TextPrimary)
+                Text(hotel.location.orEmpty(), fontSize = 14.sp, color = TextSecondary)
+                Text("Lat: ${hotel.lat}, Lon: ${hotel.lon}", fontSize = 12.sp, color = Color.Gray)
             }
             Column(horizontalAlignment = Alignment.End) {
-                Text("Rs. ${hotel.price}", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = MaterialTheme.colorScheme.primary)
+                Text("Rs. ${hotel.price?.toString() ?: "N/A"}", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = md_theme_light_primary)
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    repeat(hotel.rating) {
-                        Icon(Icons.Filled.Star, contentDescription = null, tint = Color(0xFFFFC107), modifier = Modifier.size(14.dp))
+                    val rating = hotel.rating?.toInt() ?: 0
+                    repeat(rating) {
+                        Icon(Icons.Filled.Star, contentDescription = null, tint = SunsetOrange, modifier = Modifier.size(14.dp))
                     }
-                    repeat(5 - hotel.rating) {
+                    repeat(5 - rating) {
                         Icon(Icons.Filled.Star, contentDescription = null, tint = Color.LightGray, modifier = Modifier.size(14.dp))
                     }
-                    Text(" /night", fontSize = 12.sp, color = Color.Gray, modifier = Modifier.padding(start = 4.dp))
-                    if (hotel.isFavorite) {
-                        Icon(
-                            imageVector = Icons.Filled.Star,
-                            contentDescription = null,
-                            tint = Color(0xFFFFC107),
-                            modifier = Modifier
-                                .size(16.dp)
-                                .padding(start = 4.dp)
-                        )
-                    }
+                }
+                IconButton(onClick = onBookmark) {
+                    Icon(
+                        imageVector = Icons.Filled.Star,
+                        contentDescription = if (isBookmarked) "Bookmarked" else "Bookmark",
+                        tint = if (isBookmarked) SunsetOrange else Color.LightGray
+                    )
                 }
             }
         }
     }
 }
 
-@Preview(showBackground = true)
+// Show hotel info summary above the hotel list
 @Composable
-fun PreviewHotelsScreen() {
-    TouristGuideTheme {
-        HotelsScreen(navController = rememberNavController())
+fun HotelInfoSummary(hotels: List<Hotel>) {
+    if (hotels.isNotEmpty()) {
+        val avgPrice = hotels.mapNotNull { it.price }.average().toInt() // Use toInt() instead of toIntOrNull()
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 6.dp, horizontal = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(Icons.Filled.Hotel, contentDescription = null, tint = md_theme_light_primary, modifier = Modifier.size(18.dp))
+            Text(" ${hotels.size} hotels found", fontSize = 14.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(start = 4.dp))
+            Spacer(Modifier.width(12.dp))
+            Icon(Icons.Filled.Star, contentDescription = null, tint = SunsetOrange, modifier = Modifier.size(16.dp))
+            Text(" Avg. Price: Rs. $avgPrice", fontSize = 13.sp, color = TextSecondary, modifier = Modifier.padding(start = 2.dp))
+        }
     }
 }
