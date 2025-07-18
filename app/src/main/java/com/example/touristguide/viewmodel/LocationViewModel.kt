@@ -15,4 +15,4 @@ class LocationViewModel : ViewModel() {
         _latitude.value = lat
         _longitude.value = lon
     }
-}
+} 
