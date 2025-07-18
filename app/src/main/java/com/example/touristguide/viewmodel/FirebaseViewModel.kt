@@ -1,6 +1,5 @@
 package com.example.touristguide.viewmodel
 
-
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.touristguide.data.repository.FirebaseRepository
@@ -9,9 +8,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
-class FirebaseViewModel : ViewModel() {
-    private val repository = FirebaseRepository()
-
+class FirebaseViewModel(
+    private val repository: FirebaseRepository = FirebaseRepository()
+) : ViewModel() {
     private val _userPlans = MutableStateFlow<List<Map<String, Any>>>(emptyList())
     val userPlans: StateFlow<List<Map<String, Any>>> = _userPlans
 
@@ -98,4 +97,4 @@ class FirebaseViewModel : ViewModel() {
             }
         }
     }
-}
+} 
