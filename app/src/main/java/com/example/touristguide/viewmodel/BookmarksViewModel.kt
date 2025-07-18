@@ -26,14 +26,24 @@ class BookmarksViewModel : ViewModel() {
                     val list = mutableListOf<BookmarkedItem>()
                     for (child in snapshot.children) {
                         val name = child.child("name").getValue(String::class.java) ?: ""
-                        val details = child.child("address").getValue(String::class.java) ?: "" // Use address as details
-                        val typeStr = child.child("type").getValue(String::class.java) ?: "PLACE" // Default to PLACE if missing
+                        val address = child.child("address").getValue(String::class.java)
+                        val details = child.child("details").getValue(String::class.java)
+                        val typeStr = child.child("type").getValue(String::class.java) ?: "PLACE"
                         val type = try {
                             BookmarkType.valueOf(typeStr)
                         } catch (e: Exception) {
                             BookmarkType.PLACE
                         }
-                        list.add(BookmarkedItem(type, name, details))
+                        // MIGRATION: If address is missing but details exists, migrate
+                        if (address == null && details != null) {
+                            child.ref.child("address").setValue(details)
+                            child.ref.child("details").removeValue()
+                            android.util.Log.d("BookmarksVM", "Migrated bookmark: name=$name, details->$details")
+                            list.add(BookmarkedItem(type, name, details))
+                        } else {
+                            list.add(BookmarkedItem(type, name, address ?: ""))
+                        }
+                        android.util.Log.d("BookmarksVM", "Fetched: name=$name, address=${address ?: details}, type=$typeStr")
                     }
                     _bookmarks.value = list
                 }
@@ -47,12 +57,12 @@ class BookmarksViewModel : ViewModel() {
 
     fun removeBookmark(bookmark: BookmarkedItem) {
         userId?.let { uid ->
-            dbRef.child(uid).get().addOnSuccessListener { snapshot ->
+            dbRef.child(uid).child("bookmarks").get().addOnSuccessListener { snapshot ->
                 for (child in snapshot.children) {
                     val typeStr = child.child("type").getValue(String::class.java)
                     val name = child.child("name").getValue(String::class.java)
-                    val details = child.child("details").getValue(String::class.java)
-                    if (typeStr == bookmark.type.name && name == bookmark.name && details == bookmark.details) {
+                    val address = child.child("address").getValue(String::class.java)
+                    if (typeStr == bookmark.type.name && name == bookmark.name && address == bookmark.details) {
                         child.ref.removeValue()
                         break
                     }
