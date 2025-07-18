@@ -7,17 +7,8 @@ import retrofit2.http.Query
 import retrofit2.Call
 
 interface WeatherService {
-    // 7-day forecast by coordinates
-    @GET("data/2.5/onecall")
-    fun get7DayForecast(
-        @Query("lat") lat: Double,
-        @Query("lon") lon: Double,
-        @Query("exclude") exclude: String = "minutely,hourly,alerts,current",
-        @Query("appid") apiKey: String
-    ): Call<ForecastResponse>
-
     // 5-day forecast by coordinates
-    @GET("forecast")
+    @GET("data/2.5/forecast")
     fun get5DayForecastByCoords(
         @Query("lat") lat: Double,
         @Query("lon") lon: Double,
@@ -26,7 +17,7 @@ interface WeatherService {
     ): Call<ForecastResponse>
 
     // 5-day forecast by city
-    @GET("forecast")
+    @GET("data/2.5/forecast")
     fun get5DayForecastByCity(
         @Query("q") city: String,
         @Query("appid") apiKey: String,
@@ -34,7 +25,7 @@ interface WeatherService {
     ): Call<ForecastResponse>
 
     // Current weather by coordinates
-    @GET("weather")
+    @GET("data/2.5/weather")
     fun getCurrentWeatherByCoords(
         @Query("lat") lat: Double,
         @Query("lon") lon: Double,
@@ -43,10 +34,10 @@ interface WeatherService {
     ): Call<WeatherResponse>
 
     // Current weather by city
-    @GET("weather")
+    @GET("data/2.5/weather")
     fun getCurrentWeatherByCity(
         @Query("q") city: String,
         @Query("appid") apiKey: String,
         @Query("units") units: String = "metric"
     ): Call<WeatherResponse>
-}
+} 
