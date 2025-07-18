@@ -64,19 +64,11 @@ fun PlaceItemCard(
             }
             Spacer(Modifier.width(14.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(place.name, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                Text(place.address, fontSize = 13.sp, color = MaterialTheme.colorScheme.secondary)
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("${place.distance} km", fontSize = 12.sp, color = Color.Gray)
-                    Spacer(Modifier.width(8.dp))
-                    Text("Rating: ", fontSize = 12.sp, color = Color.Gray)
-                    repeat(place.rating) {
-                        Text("★", color = Color(0xFFFFC107), fontSize = 12.sp)
-                    }
-                    repeat(5 - place.rating) {
-                        Text("☆", color = Color.Gray, fontSize = 12.sp)
-                    }
-                }
+                Text(place.name ?: "", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                Text(place.address ?: "", fontSize = 13.sp, color = MaterialTheme.colorScheme.secondary)
+                Text("Category: ${place.category}", fontSize = 12.sp, color = Color.Gray)
+                Text("Rating: ${place.rating?.toString() ?: "N/A"}", fontSize = 12.sp, color = Color.Gray)
+                Text("Price: ${place.price?.toString() ?: "N/A"}", fontSize = 12.sp, color = Color.Gray)
             }
             // Save/unsave button
             IconButton(onClick = onBookmarkClick) {
@@ -93,4 +85,4 @@ fun PlaceItemCard(
             }
         }
     }
-} 
+}
