@@ -15,20 +15,16 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.touristguide.R
-import com.example.touristguide.ui.auth.isRememberMeEnabled
 import com.google.firebase.auth.FirebaseAuth
-import androidx.compose.ui.platform.LocalContext
 
 @Composable
 fun SplashScreen(navController: NavController) {
-    val context = LocalContext.current
     val auth = FirebaseAuth.getInstance()
 
     LaunchedEffect(true) {
         Handler(Looper.getMainLooper()).postDelayed({
             val user = auth.currentUser
-            val rememberMe = isRememberMeEnabled(context)
-            if (user != null && rememberMe) {
+            if (user != null) {
                 navController.navigate("home") {
                     popUpTo("splash") { inclusive = true }
                 }
