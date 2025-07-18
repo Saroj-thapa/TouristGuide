@@ -32,7 +32,7 @@ fun PlaceDetailsDialog(place: Place, onDismiss: () -> Unit) {
         text = {
             Column(modifier = Modifier.fillMaxWidth()) {
                 // 1. Hospital Name
-                Text(place.name, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 8.dp))
+                Text(place.name ?: "", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 8.dp))
                 // 2. Map in Card
                 Card(
                     modifier = Modifier
@@ -50,20 +50,16 @@ fun PlaceDetailsDialog(place: Place, onDismiss: () -> Unit) {
                 }
                 Spacer(modifier = Modifier.height(16.dp))
                 // 3. Full Hospital Details
-                Text("Address: ${place.address}", style = MaterialTheme.typography.bodyMedium)
+                Text("Address: ${place.address ?: "-"}", style = MaterialTheme.typography.bodyMedium)
                 Text("Category: ${place.category.displayName}", style = MaterialTheme.typography.bodyMedium)
-                Text("Distance: ${place.distance} km", style = MaterialTheme.typography.bodyMedium)
+                Text("Rating: ${place.rating?.toString() ?: "N/A"}", style = MaterialTheme.typography.bodyMedium)
+                Text("Price: ${place.price?.toString() ?: "N/A"}", style = MaterialTheme.typography.bodyMedium)
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Rating: ", style = MaterialTheme.typography.bodyMedium)
-                    repeat(place.rating) {
-                        Text("★", color = Color(0xFFFFC107), style = MaterialTheme.typography.bodyMedium)
-                    }
-                    repeat(5 - place.rating) {
-                        Text("☆", color = Color.Gray, style = MaterialTheme.typography.bodyMedium)
-                    }
-                }
-                if (place.category == PlaceCategory.ACCOMMODATION || place.category == PlaceCategory.RESTAURANTS) {
-                    Text("Price: Rs. ${place.price}", style = MaterialTheme.typography.bodyMedium)
+                    Text("Latitude: ", style = MaterialTheme.typography.bodyMedium)
+                    Text("${place.latitude}", style = MaterialTheme.typography.bodyMedium)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Longitude: ", style = MaterialTheme.typography.bodyMedium)
+                    Text("${place.longitude}", style = MaterialTheme.typography.bodyMedium)
                 }
                 Spacer(modifier = Modifier.height(16.dp))
                 // 4. Action Buttons
@@ -82,20 +78,6 @@ fun PlaceDetailsDialog(place: Place, onDismiss: () -> Unit) {
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                     ) {
                         Text("Open in Maps", color = Color.White)
-                    }
-                    if (place.phone != null && place.phone.isNotBlank()) {
-                        Button(
-                            onClick = {
-                                val intent = Intent(Intent.ACTION_DIAL).apply {
-                                    data = Uri.parse("tel:${place.phone}")
-                                }
-                                context.startActivity(intent)
-                            },
-                            shape = RoundedCornerShape(16.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
-                        ) {
-                            Text("Call", color = Color.White)
-                        }
                     }
                 }
             }
