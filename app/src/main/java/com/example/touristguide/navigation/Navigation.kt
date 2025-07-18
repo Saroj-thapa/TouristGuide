@@ -13,6 +13,10 @@ import com.example.touristguide.ui.home.HomeScreen
 import com.example.touristguide.ui.profile.ProfileScreen
 import com.example.touristguide.ui.screen.*
 import com.example.touristguide.ui.splash.SplashScreen
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.touristguide.viewmodel.HotelsViewModel
+import com.example.touristguide.viewmodel.BookmarksViewModel
+import androidx.compose.runtime.collectAsState
 
 object Routes {
     const val SPLASH = "splash"
@@ -35,6 +39,7 @@ object Routes {
 
 @Composable
 fun NavigationGraph(navController: NavHostController, startDestination: String = Routes.SPLASH) {
+    val hotelsViewModel: HotelsViewModel = viewModel()
     NavHost(
         navController = navController,
         startDestination = startDestination
@@ -67,11 +72,18 @@ fun NavigationGraph(navController: NavHostController, startDestination: String =
         composable(Routes.PLACES) {
             PlacesScreen(navController)
         }
+        composable(
+            "places?placeName={placeName}",
+            arguments = listOf(navArgument("placeName") { nullable = true })
+        ) { backStackEntry ->
+            val placeName = backStackEntry.arguments?.getString("placeName")
+            PlacesScreen(navController, placeName = placeName)
+        }
         composable(Routes.TREKKING) {
             TrekkingScreen(navController)
         }
         composable(Routes.HOTELS) {
-            HotelsScreen(navController)
+            HotelsScreen(navController, hotelsViewModel = hotelsViewModel)
         }
         composable(Routes.FOOD) {
             FoodScreen(navController)
@@ -91,22 +103,14 @@ fun NavigationGraph(navController: NavHostController, startDestination: String =
         composable(Routes.EMERGENCY) {
             HelpScreen(navController)
         }
-        composable("restaurantDetails/{restaurantName}", arguments = listOf(navArgument("restaurantName") { type = NavType.StringType })) { backStackEntry ->
-            val restaurantName = backStackEntry.arguments?.getString("restaurantName") ?: "Restaurant"
-            com.example.touristguide.ui.screen.RestaurantDetailScreen(restaurantName, navController)
+        composable(Routes.BOOKMARKS) {
+            val bookmarksViewModel: BookmarksViewModel = viewModel()
+            val bookmarks = bookmarksViewModel.bookmarks.collectAsState().value
+            com.example.touristguide.ui.screen.BookMarkScreen(bookmarks = bookmarks, navController = navController)
         }
         composable("hotelDetails/{hotelId}", arguments = listOf(navArgument("hotelId") { type = NavType.StringType })) { backStackEntry ->
             val hotelId = backStackEntry.arguments?.getString("hotelId") ?: "1"
-            com.example.touristguide.ui.screen.HotelDetailsScreen(hotelId, navController)
-        }
-        composable(Routes.BOOKMARKS) {
-            // Provide sample bookmarks or connect to your data source
-            val bookmarks = listOf(
-                com.example.touristguide.ui.screen.BookmarkedItem(com.example.touristguide.ui.screen.BookmarkType.PLACE, "Pashupatinath Temple", "A famous Hindu temple in Kathmandu."),
-                com.example.touristguide.ui.screen.BookmarkedItem(com.example.touristguide.ui.screen.BookmarkType.TREKKING_ROUTE, "Everest Base Camp", "Popular trekking route in Nepal."),
-                com.example.touristguide.ui.screen.BookmarkedItem(com.example.touristguide.ui.screen.BookmarkType.HOTEL, "Hotel Yak & Yeti", "Luxury hotel in Kathmandu.")
-            )
-            com.example.touristguide.ui.screen.BookMarkScreen(bookmarks = bookmarks, navController = navController)
+            com.example.touristguide.ui.screen.HotelDetailsScreen(hotelId, navController, hotelsViewModel = hotelsViewModel)
         }
     }
 }
