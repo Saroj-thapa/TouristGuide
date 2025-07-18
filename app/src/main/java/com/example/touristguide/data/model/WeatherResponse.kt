@@ -5,6 +5,4 @@ data class WeatherResponse(
     val main: Main?,
     val weather: List<WeatherDescription>?,
     val wind: Wind?
-)
-
-// Main, WeatherDescription, and Wind are already defined in ForecastResponse.kt and can be reused.
+) 
