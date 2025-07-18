@@ -217,15 +217,15 @@ fun LoginScreen(navController: NavController, viewModel: AuthViewModel = viewMod
     // Autofill email if Remember Me is enabled
     LaunchedEffect(Unit) {
         if (isRememberMeEnabled(context)) {
-            rememberMe = true
             email = getRememberedEmail(context) ?: ""
+            // Do NOT set rememberMe = true automatically
         }
     }
 
     AuthScreenContent(title = "ExploreNepal") {
         OutlinedTextField(value = email, onValueChange = { email = it },
             label = { Text("Email")
-                },
+            },
             prefix = {
                 Icon(
                     imageVector = Icons.Default.Person,
