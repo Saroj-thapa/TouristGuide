@@ -23,3 +23,4 @@ object GuestManager {
         prefs.edit().remove(KEY_GUEST_ID).apply()
     }
 }
+
