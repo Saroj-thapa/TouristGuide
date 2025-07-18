@@ -1,7 +1,5 @@
 package com.example.touristguide.data.network
 
-// Placeholder for RetrofitInstance
-
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 
@@ -21,3 +19,4 @@ object RetrofitInstance {
             .create(WeatherService::class.java)
     }
 }
+
