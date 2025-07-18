@@ -1,19 +1,16 @@
 package com.example.touristguide.viewmodel
-import android.content.Context
+
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.touristguide.data.repository.FirebaseService
 import com.example.touristguide.data.repository.FirebaseRepository
 import com.example.touristguide.data.repository.RepositoryException
 import com.example.touristguide.data.model.User
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.auth.GoogleAuthProvider
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import android.widget.Toast
-import android.util.Log
-import kotlinx.coroutines.tasks.await
+import com.google.firebase.auth.FirebaseAuth
 
 class AuthViewModel(
     private val firebaseService: FirebaseService = FirebaseService(),
@@ -49,7 +46,7 @@ class AuthViewModel(
         viewModelScope.launch {
             val result = firebaseService.signup(email, password)
             if (result.isSuccess) {
-                val uid = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+                val uid = firebaseService.getCurrentUser()?.uid ?: ""
                 val user = User(uid, firstName, lastName, email)
                 firebaseRepository.addUser(uid, mapOf(
                     "uid" to uid,
@@ -71,35 +68,25 @@ class AuthViewModel(
 
     fun loginAnonymously() {
         viewModelScope.launch {
-            try {
-                FirebaseAuth.getInstance().signInAnonymously().await()
-                val firebaseUser = FirebaseAuth.getInstance().currentUser
-                _isAnonymous.value = firebaseUser?.isAnonymous == true
+            val result = firebaseService.loginAnonymously()
+            _isAnonymous.value = result.isSuccess
+            if (result.isSuccess) {
+                val firebaseUser = firebaseService.getCurrentUser()
                 if (firebaseUser != null && firebaseUser.isAnonymous) {
                     val user = User(uid = firebaseUser.uid, firstName = "Anonymous", lastName = "", email = "")
                     _user.value = user
                     _userName.value = "Anonymous"
                     _userEmail.value = ""
                 }
-            } catch (e: Exception) {
-                _isAnonymous.value = false
             }
         }
     }
 
-    fun logout(context: Context) {
+    fun logout() {
         firebaseService.logout()
         _userName.value = ""
         _user.value = null
         _isAnonymous.value = false
-        // Set logged_out flag in SharedPreferences
-        val prefs = context.getSharedPreferences("auth_prefs", Context.MODE_PRIVATE)
-        prefs.edit()
-            .putBoolean("logged_out", true)
-            .putBoolean("is_logged_in", false)
-            .putBoolean("remember_me", false)
-            .remove("remembered_email")
-            .apply()
     }
 
     fun isUserLoggedIn(): Boolean = firebaseService.isUserLoggedIn()
@@ -167,18 +154,13 @@ class AuthViewModel(
 
     fun firebaseAuthWithGoogle(idToken: String, onResult: (Boolean, String?) -> Unit) {
         viewModelScope.launch {
-            try {
-                val credential = GoogleAuthProvider.getCredential(idToken, null)
-                val authResult = FirebaseAuth.getInstance().signInWithCredential(credential).await()
-                if (authResult.user != null) {
-                    fetchUser()
-                    onResult(true, null)
-                } else {
-                    onResult(false, "Authentication failed.")
-                }
-            } catch (e: Exception) {
-                onResult(false, e.localizedMessage)
+            val result = firebaseService.firebaseAuthWithGoogle(idToken)
+            onResult(result.isSuccess, result.exceptionOrNull()?.message)
+            if (result.isSuccess) {
+                fetchUser()
             }
         }
     }
 }
+
+
