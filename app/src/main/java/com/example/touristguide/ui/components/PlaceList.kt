@@ -35,9 +35,9 @@ fun PlaceList(
                 )
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    Text(place.name, style = MaterialTheme.typography.titleMedium)
-                    Text(place.address, style = MaterialTheme.typography.bodySmall)
-                    Text("Rating: ${place.rating} | Price: ${place.price} | Distance: ${place.distance} km", style = MaterialTheme.typography.bodySmall)
+                    Text(place.name ?: "", style = MaterialTheme.typography.titleMedium)
+                    Text(place.address ?: "", style = MaterialTheme.typography.bodySmall)
+                    Text("Category: ${place.category} | Latitude: ${place.latitude} | Longitude: ${place.longitude}", style = MaterialTheme.typography.bodySmall)
                 }
             }
         }
