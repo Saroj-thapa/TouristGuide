@@ -2,10 +2,10 @@ package com.example.touristguide.navigation
 
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
-import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import androidx.navigation.NavType
 import com.example.touristguide.ui.auth.ForgotPasswordScreen
 import com.example.touristguide.ui.auth.LoginScreen
 import com.example.touristguide.ui.auth.SignupScreen
@@ -13,6 +13,10 @@ import com.example.touristguide.ui.home.HomeScreen
 import com.example.touristguide.ui.profile.ProfileScreen
 import com.example.touristguide.ui.screen.*
 import com.example.touristguide.ui.splash.SplashScreen
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.touristguide.viewmodel.HotelsViewModel
+import com.example.touristguide.viewmodel.BookmarksViewModel
+import androidx.compose.runtime.collectAsState
 
 object Routes {
     const val SPLASH = "splash"
@@ -30,13 +34,15 @@ object Routes {
     const val HOSPITAL = "hospital"
     const val BUDGET = "budget"
     const val EMERGENCY = "emergency"
+    const val BOOKMARKS = "bookmarks"
 }
 
 @Composable
-fun NavigationGraph(navController: NavHostController) {
+fun NavigationGraph(navController: NavHostController, startDestination: String = Routes.SPLASH) {
+    val hotelsViewModel: HotelsViewModel = viewModel()
     NavHost(
         navController = navController,
-        startDestination = Routes.SPLASH
+        startDestination = startDestination
     ) {
         // Splash screen
         composable(Routes.SPLASH) {
@@ -66,11 +72,18 @@ fun NavigationGraph(navController: NavHostController) {
         composable(Routes.PLACES) {
             PlacesScreen(navController)
         }
+        composable(
+            "places?placeName={placeName}",
+            arguments = listOf(navArgument("placeName") { nullable = true })
+        ) { backStackEntry ->
+            val placeName = backStackEntry.arguments?.getString("placeName")
+            PlacesScreen(navController, placeName = placeName)
+        }
         composable(Routes.TREKKING) {
             TrekkingScreen(navController)
         }
         composable(Routes.HOTELS) {
-            HotelsScreen(navController)
+            HotelsScreen(navController, hotelsViewModel = hotelsViewModel)
         }
         composable(Routes.FOOD) {
             FoodScreen(navController)
@@ -90,15 +103,14 @@ fun NavigationGraph(navController: NavHostController) {
         composable(Routes.EMERGENCY) {
             HelpScreen(navController)
         }
-        composable("restaurantDetails/{restaurantName}", arguments = listOf(navArgument("restaurantName")
-        { type = NavType.StringType })) { backStackEntry ->
-            val restaurantName = backStackEntry.arguments?.getString("restaurantName") ?: "Restaurant"
-            com.example.touristguide.ui.screen.RestaurantDetailScreen(restaurantName, navController)
+        composable(Routes.BOOKMARKS) {
+            val bookmarksViewModel: BookmarksViewModel = viewModel()
+            val bookmarks = bookmarksViewModel.bookmarks.collectAsState().value
+            com.example.touristguide.ui.screen.BookMarkScreen(bookmarks = bookmarks, navController = navController)
         }
         composable("hotelDetails/{hotelId}", arguments = listOf(navArgument("hotelId") { type = NavType.StringType })) { backStackEntry ->
             val hotelId = backStackEntry.arguments?.getString("hotelId") ?: "1"
-            com.example.touristguide.ui.screen.HotelDetailsScreen(hotelId, navController)
+            com.example.touristguide.ui.screen.HotelDetailsScreen(hotelId, navController, hotelsViewModel = hotelsViewModel)
         }
     }
 }
-

@@ -1,27 +1,24 @@
 package com.example.touristguide.ui.screen
 
+import android.Manifest
+import android.annotation.SuppressLint
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
-import androidx.compose.material.icons.filled.Cloud
-import androidx.compose.material.icons.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -33,11 +30,45 @@ import androidx.navigation.compose.rememberNavController
 import com.example.touristguide.ui.theme.TouristGuideTheme
 import com.example.touristguide.ui.components.CommonTopBar
 import com.example.touristguide.ui.components.CommonBottomBar
-import androidx.compose.ui.graphics.Brush
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.touristguide.viewmodel.WeatherViewModel
+import com.example.touristguide.viewmodel.LocationViewModel
+import androidx.compose.runtime.collectAsState
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import java.text.SimpleDateFormat
+import java.util.*
 
+@OptIn(ExperimentalPermissionsApi::class)
+@SuppressLint("MissingPermission")
 @Composable
-fun WeatherScreen(navController: NavController) {
-    var location by remember { mutableStateOf("") }
+fun WeatherScreen(
+    navController: NavController,
+    weatherViewModel: WeatherViewModel = viewModel(),
+    locationViewModel: LocationViewModel = viewModel()
+) {
+    val weather = weatherViewModel.weather.collectAsState().value
+    val weatherLoading = weatherViewModel.weatherLoading.collectAsState().value
+    val weatherError = weatherViewModel.weatherError.collectAsState().value
+    val forecast5Day = weatherViewModel.forecast5Day.collectAsState().value
+    val forecast5DayLoading = weatherViewModel.forecast5DayLoading.collectAsState().value
+    val forecast5DayError = weatherViewModel.forecast5DayError.collectAsState().value
+    val latitude = locationViewModel.latitude.collectAsState().value
+    val longitude = locationViewModel.longitude.collectAsState().value
+    var city by remember { mutableStateOf("Kathmandu") }
+    var isMyLocation by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+
+    // Fetch Kathmandu weather on first load
+    LaunchedEffect(Unit) {
+        weatherViewModel.fetchWeather("Kathmandu")
+        weatherViewModel.fetch5DayForecast("Kathmandu")
+    }
+
+    val gradient = Brush.verticalGradient(
+        colors = listOf(Color(0xFFe0f7fa), Color(0xFFb2ebf2), Color(0xFFffffff)),
+        startY = 0f,
+        endY = 1000f
+    )
 
     Scaffold(
         topBar = {
@@ -53,586 +84,218 @@ fun WeatherScreen(navController: NavController) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .background(gradient)
+                .verticalScroll(rememberScrollState())
                 .padding(innerPadding)
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            LazyColumn (
-                modifier = Modifier
-                    .padding(5.dp)
-            ){
-                item {
-
-                    OutlinedTextField(//1
-                        value = location,
-                        onValueChange = { input ->
-                            location = input
+            // Search Card
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(18.dp),
+                elevation = CardDefaults.cardElevation(4.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.95f))
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Button(onClick = {
+                            if (latitude != null && longitude != null) {
+                                isMyLocation = true
+                                city = ""
+                                weatherViewModel.fetchWeather(latitude, longitude)
+                                weatherViewModel.fetch5DayForecast(latitude, longitude)
+                            }
+                        }, modifier = Modifier.weight(1f)) {
+                            Text("My Location")
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        OutlinedTextField(
+                            value = city,
+                            onValueChange = { city = it },
+                            label = { Text("Enter city name", fontSize = 18.sp) },
+                            singleLine = true,
+                            modifier = Modifier.weight(2f),
+                            textStyle = TextStyle(fontSize = 15.sp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Button(
+                        onClick = {
+                            isMyLocation = false
+                            weatherViewModel.fetchWeather(city)
+                            weatherViewModel.fetch5DayForecast(city)
                         },
+                        enabled = city.isNotBlank(),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Default.Search, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Get Weather")
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(18.dp))
+            // Current Weather Card
+            when {
+                weatherLoading -> {
+                    CircularProgressIndicator()
+                }
+                weatherError != null -> {
+                    Text(text = weatherError, color = Color.Red)
+                }
+                weather != null -> {
+                    Card(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 10.dp),
-                        shape = RoundedCornerShape(12.dp),
-
-                        placeholder = {
+                            .padding(vertical = 8.dp),
+                        shape = RoundedCornerShape(24.dp),
+                        elevation = CardDefaults.cardElevation(8.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFFb2ebf2))
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            weather.weather?.firstOrNull()?.icon?.let { icon ->
+                                val iconUrl = "https://openweathermap.org/img/wn/${icon}@4x.png"
+                                androidx.compose.foundation.Image(
+                                    painter = coil.compose.rememberAsyncImagePainter(iconUrl),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(100.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
                             Text(
-                                "Search location or auto-locate"
+                                text = weather.weather?.firstOrNull()?.main ?: "-",
+                                fontSize = 28.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF0288D1)
                             )
-                        },
-                        keyboardOptions = KeyboardOptions(
-                            keyboardType = KeyboardType.Text
-                        ),
-                        colors = TextFieldDefaults.colors(
-                            focusedContainerColor = Color.Gray.copy(0.2f),
-                            unfocusedContainerColor = Color.Gray.copy(0.2f),
-                        ),
-                        suffix = {
-                            Icon(
-                                imageVector = Icons.Default.Search,
-                                contentDescription = null
+                            Text(
+                                text = weather.weather?.firstOrNull()?.description ?: "-",
+                                fontSize = 18.sp,
+                                color = Color(0xFF616161)
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text(
+                                text = weather.main?.temp?.let { String.format("%.1f°C", it) } ?: "-",
+                                fontSize = 36.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = Color(0xFF0288D1)
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "Humidity: ${weather.main?.humidity ?: "-"}%",
+                                fontSize = 16.sp
+                            )
+                            Text(
+                                text = "Wind: ${weather.wind?.speed ?: "-"} m/s",
+                                fontSize = 16.sp
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = weather.name ?: "-",
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.SemiBold
                             )
                         }
-                    )
-                    Spacer(modifier = Modifier.height(10.dp))
-
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(18.dp))
+            // Forecast Cards
+            when {
+                forecast5DayLoading -> {
+                    CircularProgressIndicator()
+                }
+                forecast5DayError != null -> {
+                    Text(text = forecast5DayError, color = Color.Red)
+                }
+                forecast5Day?.list != null -> {
                     Text(
-                        text = "Enter location or use GPS",
-                        style = TextStyle(
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Light
-                        )
+                        text = "7-Day Forecast",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(bottom = 8.dp)
                     )
-                    Spacer(modifier = Modifier.padding(vertical = 5.dp))
-                    Text(
-                        text = "Current Weather",
-                        style = TextStyle(
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    )
-
                     Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(top = 16.dp)
+                        modifier = Modifier
+                            .horizontalScroll(rememberScrollState())
+                            .fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-
-                        Box(
-                            modifier = Modifier
-                                .size(64.dp)
-                                .background(Color.LightGray)
-                        ) {
-                            // Replace with Image(...) to load weather icon
+                        val grouped = forecast5Day.list.groupBy { item ->
+                            SimpleDateFormat("EEEE", Locale.getDefault()).format(Date(item.dt * 1000L))
                         }
-                        Spacer(modifier = Modifier.width(5.dp))
-
-                        Column {
-                            Text(
-                                text = "\uD83C\uDF24", // 🌤
-                                fontSize = 24.sp,
-                                modifier = Modifier.padding(top = 5.dp)
-                            )
-
-                            Text("Partly Cloudy")
-                        }
-                    }
-                    HorizontalDivider(
-                        color = Color.Black.copy(alpha = 0.1f),
-                        thickness = 1.dp,
-                        modifier = Modifier.padding(vertical = 10.dp)
-                    )
-
-                    Spacer(modifier = Modifier.height(5.dp))
-
-                    Text(
-                        text = "Forecast for 7 Days",
-                        style = TextStyle(
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    )
-                    Row(//1
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(top = 16.dp)
-                    ) {
-
-                        Box(
-                            modifier = Modifier
-                                .size(64.dp)
-                                .clip(RoundedCornerShape(16.dp))
-                                .background(
-                                    Brush.verticalGradient(
-                                        colors = listOf(Color(0xFFB2EBF2), Color(0xFF80DEEA))
-                                    )
-                                ),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Cloud,
-                                contentDescription = "Weather Icon",
-                                tint = Color(0xFF0288D1),
-                                modifier = Modifier.size(36.dp)
-                            )
-                        }
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Column {
-                            Text(
-                                text = "Day 1",
-                                style = TextStyle(
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color(0xFF0288D1)
-                                )
-                            )
-                            Text(
-                                text = "Monday",
-                                style = TextStyle(
-                                    fontSize = 13.sp,
-                                    color = Color(0xFF616161)
-                                )
-                            )
-                            // "Rain expected" box
-                            Box(
+                        grouped.forEach { (dayOfWeek, items) ->
+                            val first = items.firstOrNull()
+                            val temp = first?.main?.temp?.let { String.format(Locale.getDefault(), "%.1f°C", it) } ?: "-"
+                            val desc = first?.weather?.firstOrNull()?.description ?: "-"
+                            val icon = first?.weather?.firstOrNull()?.icon
+                            Card(
                                 modifier = Modifier
-                                    .padding(top = 5.dp)
-                                    .background(Color(0xFFE0E0E0), shape = RoundedCornerShape(8.dp))
-                                    .padding(horizontal = 12.dp, vertical = 4.dp)
+                                    .width(140.dp)
+                                    .height(220.dp),
+                                shape = RoundedCornerShape(20.dp),
+                                elevation = CardDefaults.cardElevation(6.dp),
+                                colors = CardDefaults.cardColors(containerColor = Color.White)
                             ) {
-                                Text(
-                                    text = "Rain expected",
-                                    fontSize = 8.sp,
-                                    color = Color.Black
-                                )
-                            }
-                            Text(
-                                text = "\uD83C\uDF27", // Unicode for 🌧
-                                fontSize = 16.sp,
-                                modifier = Modifier.padding(top = 5.dp)
-                            )
-
-                        }
-                    }
-                    HorizontalDivider(
-                        color = Color.Black.copy(alpha = 0.1f),
-                        thickness = 1.dp,
-                        modifier = Modifier.padding(vertical = 10.dp)
-                    )
-
-                    Spacer(modifier = Modifier.height(5.dp))
-
-                    Row(//2
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(top = 16.dp)
-                    ) {
-
-                        Box(
-                            modifier = Modifier
-                                .size(64.dp)
-                                .clip(RoundedCornerShape(16.dp))
-                                .background(
-                                    Brush.verticalGradient(
-                                        colors = listOf(Color(0xFFB2EBF2), Color(0xFF80DEEA))
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(16.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.Center
+                                ) {
+                                    Text(
+                                        text = dayOfWeek,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 18.sp,
+                                        color = Color(0xFF0288D1)
                                     )
-                                ),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Cloud,
-                                contentDescription = "Weather Icon",
-                                tint = Color(0xFF0288D1),
-                                modifier = Modifier.size(36.dp)
-                            )
-                        }
-                        Spacer(modifier = Modifier.width(12.dp))
-
-                        Column {
-                            Text(
-                                text = "Day 2",
-                                style = TextStyle(
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color(0xFF0288D1)
-                                )
-                            )
-                            Text(
-                                text = "Tuesday",
-                                style = TextStyle(
-                                    fontSize = 13.sp,
-                                    color = Color(0xFF616161)
-                                )
-                            )
-                            // "Rain expected" box
-                            Box(
-                                modifier = Modifier
-                                    .padding(top = 5.dp)
-                                    .background(Color(0xFFE0E0E0), shape = RoundedCornerShape(8.dp))
-                                    .padding(horizontal = 12.dp, vertical = 4.dp)
-                            ) {
-                                Text(
-                                    text = "Party Cloudy",
-                                    fontSize = 8.sp,
-                                    color = Color.Black
-                                )
-                            }
-                            Text(
-                                text = "\uD83C\uDF27", // Unicode for 🌧
-                                fontSize = 16.sp,
-                                modifier = Modifier.padding(top = 5.dp)
-                            )
-
-                        }
-                    }
-                    HorizontalDivider(
-                        color = Color.Black.copy(alpha = 0.1f),
-                        thickness = 1.dp,
-                        modifier = Modifier.padding(vertical = 10.dp)
-                    )
-
-                    Spacer(modifier = Modifier.height(5.dp))
-                    Row(//3
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(top = 16.dp)
-                    ) {
-
-                        Box(
-                            modifier = Modifier
-                                .size(64.dp)
-                                .clip(RoundedCornerShape(16.dp))
-                                .background(
-                                    Brush.verticalGradient(
-                                        colors = listOf(Color(0xFFB2EBF2), Color(0xFF80DEEA))
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    if (icon != null) {
+                                        val iconUrl = "https://openweathermap.org/img/wn/${icon}@2x.png"
+                                        androidx.compose.foundation.Image(
+                                            painter = coil.compose.rememberAsyncImagePainter(iconUrl),
+                                            contentDescription = null,
+                                            modifier = Modifier.size(56.dp)
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text(
+                                        text = temp,
+                                        fontSize = 22.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFF0288D1)
                                     )
-                                ),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Cloud,
-                                contentDescription = "Weather Icon",
-                                tint = Color(0xFF0288D1),
-                                modifier = Modifier.size(36.dp)
-                            )
-                        }
-                        Spacer(modifier = Modifier.width(12.dp))
-
-                        Column {
-                            Text(
-                                text = "Day 3",
-                                style = TextStyle(
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color(0xFF0288D1)
-                                )
-                            )
-                            Text(
-                                text = "Wednesday",
-                                style = TextStyle(
-                                    fontSize = 13.sp,
-                                    color = Color(0xFF616161)
-                                )
-                            )
-                            // "Rain expected" box
-                            Box(
-                                modifier = Modifier
-                                    .padding(top = 5.dp)
-                                    .background(Color(0xFFE0E0E0), shape = RoundedCornerShape(8.dp))
-                                    .padding(horizontal = 12.dp, vertical = 4.dp)
-                            ) {
-                                Text(
-                                    text = "Mild Weather",
-                                    fontSize = 8.sp,
-                                    color = Color.Black
-                                )
-                            }
-                            Text(
-                                text = "\uD83C\uDF27", // Unicode for 🌧
-                                fontSize = 16.sp,
-                                modifier = Modifier.padding(top = 5.dp)
-                            )
-
-                        }
-                    }
-                    HorizontalDivider(
-                        color = Color.Black.copy(alpha = 0.1f),
-                        thickness = 1.dp,
-                        modifier = Modifier.padding(vertical = 10.dp)
-                    )
-
-                    Spacer(modifier = Modifier.height(5.dp))
-                    Row(//4
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(top = 16.dp)
-                    ) {
-
-                        Box(
-                            modifier = Modifier
-                                .size(64.dp)
-                                .clip(RoundedCornerShape(16.dp))
-                                .background(
-                                    Brush.verticalGradient(
-                                        colors = listOf(Color(0xFFB2EBF2), Color(0xFF80DEEA))
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = desc,
+                                        fontSize = 14.sp,
+                                        color = Color(0xFF616161),
+                                        fontWeight = FontWeight.Medium
                                     )
-                                ),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Cloud,
-                                contentDescription = "Weather Icon",
-                                tint = Color(0xFF0288D1),
-                                modifier = Modifier.size(36.dp)
-                            )
-                        }
-                        Spacer(modifier = Modifier.width(12.dp))
-
-                        Column {
-                            Text(
-                                text = "Day 4",
-                                style = TextStyle(
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color(0xFF0288D1)
-                                )
-                            )
-                            Text(
-                                text = "Thursday",
-                                style = TextStyle(
-                                    fontSize = 13.sp,
-                                    color = Color(0xFF616161)
-                                )
-                            )
-                            // "Rain expected" box
-                            Box(
-                                modifier = Modifier
-                                    .padding(top = 5.dp)
-                                    .background(Color(0xFFE0E0E0), shape = RoundedCornerShape(8.dp))
-                                    .padding(horizontal = 12.dp, vertical = 4.dp)
-                            ) {
-                                Text(
-                                    text = "Sunny",
-                                    fontSize = 8.sp,
-                                    color = Color.Black
-                                )
-                            }
-                            Text(
-                                text = "\uD83C\uDF27", // Unicode for 🌧
-                                fontSize = 16.sp,
-                                modifier = Modifier.padding(top = 5.dp)
-                            )
-
-                        }
-                    }
-                    HorizontalDivider(
-                        color = Color.Black.copy(alpha = 0.1f),
-                        thickness = 1.dp,
-                        modifier = Modifier.padding(vertical = 10.dp)
-                    )
-
-                    Spacer(modifier = Modifier.height(5.dp))
-                    Row(//5
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(top = 16.dp)
-                    ) {
-
-                        Box(
-                            modifier = Modifier
-                                .size(64.dp)
-                                .clip(RoundedCornerShape(16.dp))
-                                .background(
-                                    Brush.verticalGradient(
-                                        colors = listOf(Color(0xFFB2EBF2), Color(0xFF80DEEA))
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text(
+                                        text = "Humidity: ${first?.main?.humidity ?: "-"}%",
+                                        fontSize = 12.sp
                                     )
-                                ),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Cloud,
-                                contentDescription = "Weather Icon",
-                                tint = Color(0xFF0288D1),
-                                modifier = Modifier.size(36.dp)
-                            )
-                        }
-                        Spacer(modifier = Modifier.width(12.dp))
-
-                        Column {
-                            Text(
-                                text = "Day 5",
-                                style = TextStyle(
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color(0xFF0288D1)
-                                )
-                            )
-                            Text(
-                                text = "Friday",
-                                style = TextStyle(
-                                    fontSize = 13.sp,
-                                    color = Color(0xFF616161)
-                                )
-                            )
-                            // "Rain expected" box
-                            Box(
-                                modifier = Modifier
-                                    .padding(top = 5.dp)
-                                    .background(Color(0xFFE0E0E0), shape = RoundedCornerShape(8.dp))
-                                    .padding(horizontal = 12.dp, vertical = 4.dp)
-                            ) {
-                                Text(
-                                    text = "Chances of showers",
-                                    fontSize = 8.sp,
-                                    color = Color.Black
-                                )
-                            }
-                            Text(
-                                text = "\uD83C\uDF27", // Unicode for 🌧
-                                fontSize = 16.sp,
-                                modifier = Modifier.padding(top = 5.dp)
-                            )
-
-                        }
-                    }
-                    HorizontalDivider(
-                        color = Color.Black.copy(alpha = 0.1f),
-                        thickness = 1.dp,
-                        modifier = Modifier.padding(vertical = 10.dp)
-                    )
-
-                    Spacer(modifier = Modifier.height(5.dp))
-                    Row(//6
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(top = 16.dp)
-                    ) {
-
-                        Box(
-                            modifier = Modifier
-                                .size(64.dp)
-                                .clip(RoundedCornerShape(16.dp))
-                                .background(
-                                    Brush.verticalGradient(
-                                        colors = listOf(Color(0xFFB2EBF2), Color(0xFF80DEEA))
+                                    Text(
+                                        text = "Wind: ${first?.wind?.speed ?: "-"} m/s",
+                                        fontSize = 12.sp
                                     )
-                                ),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Cloud,
-                                contentDescription = "Weather Icon",
-                                tint = Color(0xFF0288D1),
-                                modifier = Modifier.size(36.dp)
-                            )
-                        }
-                        Spacer(modifier = Modifier.width(12.dp))
-
-                        Column {
-                            Text(
-                                text = "Day 6",
-                                style = TextStyle(
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color(0xFF0288D1)
-                                )
-                            )
-                            Text(
-                                text = "Saturday",
-                                style = TextStyle(
-                                    fontSize = 13.sp,
-                                    color = Color(0xFF616161)
-                                )
-                            )
-                            Text(
-                                text = "\uD83C\uDF27", // Unicode for 🌧
-                                fontSize = 16.sp,
-                                modifier = Modifier.padding(top = 5.dp)
-                            )
-                        }
-                    }
-                    HorizontalDivider(
-                        color = Color.Black.copy(alpha = 0.1f),
-                        thickness = 1.dp,
-                        modifier = Modifier.padding(vertical = 10.dp)
-                    )
-
-                    Spacer(modifier = Modifier.height(5.dp))
-                    Row(//7
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(top = 16.dp)
-                    ) {
-
-                        Box(
-                            modifier = Modifier
-                                .size(64.dp)
-                                .clip(RoundedCornerShape(16.dp))
-                                .background(
-                                    Brush.verticalGradient(
-                                        colors = listOf(Color(0xFFB2EBF2), Color(0xFF80DEEA))
-                                    )
-                                ),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Cloud,
-                                contentDescription = "Weather Icon",
-                                tint = Color(0xFF0288D1),
-                                modifier = Modifier.size(36.dp)
-                            )
-                        }
-                        Spacer(modifier = Modifier.width(12.dp))
-
-                        Column {
-                            Text(
-                                text = "Day 7",
-                                style = TextStyle(
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color(0xFF0288D1)
-                                )
-                            )
-                            Text(
-                                text = "Sunday",
-                                style = TextStyle(
-                                    fontSize = 13.sp,
-                                    color = Color(0xFF616161)
-                                )
-                            )
-                            // "Rain expected" box
-                            Box(
-                                modifier = Modifier
-                                    .padding(top = 5.dp)
-                                    .background(Color(0xFFE0E0E0), shape = RoundedCornerShape(8.dp))
-                                    .padding(horizontal = 12.dp, vertical = 4.dp)
-                            ) {
-                                Text(
-                                    text = "Cloudy",
-                                    fontSize = 8.sp,
-                                    color = Color.Black
-                                )
+                                }
                             }
-                            Text(
-                                text = "\u2601",
-                                fontSize = 16.sp,
-                                modifier = Modifier.padding(top = 5.dp)
-                            )
-
                         }
                     }
-                    HorizontalDivider(
-                        color = Color.Black.copy(alpha = 0.1f),
-                        thickness = 1.dp,
-                        modifier = Modifier.padding(vertical = 10.dp)
-                    )
-
-                    Spacer(modifier = Modifier.height(5.dp))
-
-                    Text(
-                        text = "Altitude-based Tips",
-                        style = TextStyle(
-                            fontSize = 25.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    )
-
-                    Spacer(modifier = Modifier.height(5.dp))
-
-
-
                 }
             }
         }
-
     }
 }
 

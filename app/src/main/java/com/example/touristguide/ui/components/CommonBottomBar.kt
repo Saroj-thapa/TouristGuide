@@ -23,7 +23,7 @@ fun CommonBottomBar(navController: NavController) {
     NavigationBar {
         NavigationBarItem(
             selected = currentDestination?.hierarchy?.any { it.route == Routes.HOME } == true,
-            onClick = { 
+            onClick = {
                 // Clear the entire back stack and navigate to home
                 navController.navigate(Routes.HOME) {
                     popUpTo(0) // Clear the entire back stack
@@ -40,7 +40,7 @@ fun CommonBottomBar(navController: NavController) {
         )
         NavigationBarItem(
             selected = currentDestination?.hierarchy?.any { it.route == Routes.PLACES } == true,
-            onClick = { 
+            onClick = {
                 navController.navigate(Routes.PLACES) {
                     // Pop up to home and save its state
                     popUpTo(Routes.HOME) { saveState = true }
@@ -58,7 +58,7 @@ fun CommonBottomBar(navController: NavController) {
         )
         NavigationBarItem(
             selected = currentDestination?.hierarchy?.any { it.route == Routes.HOTELS } == true,
-            onClick = { 
+            onClick = {
                 navController.navigate(Routes.HOTELS) {
                     // Pop up to home and save its state
                     popUpTo(Routes.HOME) { saveState = true }
@@ -76,7 +76,7 @@ fun CommonBottomBar(navController: NavController) {
         )
         NavigationBarItem(
             selected = currentDestination?.hierarchy?.any { it.route == Routes.PROFILE } == true,
-            onClick = { 
+            onClick = {
                 navController.navigate(Routes.PROFILE) {
                     // Pop up to home and save its state
                     popUpTo(Routes.HOME) { saveState = true }
@@ -93,4 +93,4 @@ fun CommonBottomBar(navController: NavController) {
             label = null
         )
     }
-} 
+}

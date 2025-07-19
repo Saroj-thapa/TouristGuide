@@ -53,7 +53,7 @@ fun BudgetScreen(navController: NavController) {
         ) {
 
             Text(
-                "Plan Your Trip Effortlessly",
+                "✨ Plan Your Trip Effortlessly",
                 style = MaterialTheme.typography.headlineSmall,
                 color = MaterialTheme.colorScheme.primary
             )
@@ -111,7 +111,7 @@ fun BudgetScreen(navController: NavController) {
                 Text("💰 Estimate Cost", color = Color.White)
             }
 
-            Divider(thickness = 1.dp)
+            HorizontalDivider(thickness = 1.dp)
 
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -119,8 +119,8 @@ fun BudgetScreen(navController: NavController) {
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
             ) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(" Estimated Costs", style = MaterialTheme.typography.titleMedium)
-                    Text("🍲 Food: Rs. 10,500", style = MaterialTheme.typography.bodyLarge)
+                    Text("📦 Estimated Costs", style = MaterialTheme.typography.titleMedium)
+                    Text("🍽️ Food: Rs. 10,500", style = MaterialTheme.typography.bodyLarge)
                     Text("🏨 Stay: Rs. 15,000", style = MaterialTheme.typography.bodyLarge)
                     Text("🚌 Transport: Rs. 33,000", style = MaterialTheme.typography.bodyLarge)
                 }

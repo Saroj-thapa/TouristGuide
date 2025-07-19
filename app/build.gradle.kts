@@ -1,9 +1,9 @@
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
-
+    id("com.google.gms.google-services")
+    id("com.google.firebase.crashlytics")
     alias(libs.plugins.kotlin.compose)
-    alias(libs.plugins.google.gms.google.services)
 }
 
 android {
@@ -13,7 +13,7 @@ android {
     defaultConfig {
         applicationId = "com.example.touristguide"
         minSdk = 26
-        targetSdk = 34
+        targetSdk = 35 // Updated to match compileSdk for latest Android compatibility
         versionCode = 1
         versionName = "1.0"
 
@@ -61,19 +61,10 @@ android {
 }
 
 dependencies {
-    // Firebase BoM
-    implementation(platform("com.google.firebase:firebase-bom:33.0.0"))
-
-    // Firebase Services
-    implementation("com.google.firebase:firebase-auth")
-    implementation("com.google.firebase:firebase-firestore")
-    implementation(libs.firebase.database)
-
-    val composeBomVersion = "2024.02.00"
-    implementation(platform("androidx.compose:compose-bom:$composeBomVersion"))
+    implementation(platform(libs.androidx.compose.bom))
 
     // Core Android
-    implementation("androidx.core:core-ktx:1.12.0")
+    implementation(libs.androidx.core.ktx)
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")
     implementation("androidx.activity:activity-compose:1.8.2")
 
@@ -101,12 +92,29 @@ dependencies {
     implementation("com.google.maps.android:maps-compose:4.3.0")
     implementation("com.google.android.libraries.places:places:3.3.0")
 
+    // Firebase BoM
+    implementation(platform("com.google.firebase:firebase-bom:33.0.0"))
+    implementation("com.google.firebase:firebase-auth-ktx")
+    implementation("com.google.firebase:firebase-firestore-ktx")
+    implementation("com.google.firebase:firebase-database-ktx")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.7.3")
+
+    // osmdroid for OpenStreetMap
+    implementation("org.osmdroid:osmdroid-android:6.1.16")
+
+    // Retrofit & Gson for API calls
+    implementation("com.squareup.retrofit2:retrofit:2.9.0")
+    implementation("com.squareup.retrofit2:converter-gson:2.9.0")
+
     // Testing
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
-    androidTestImplementation(platform("androidx.compose:compose-bom:$composeBomVersion"))
+    androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
+    implementation("com.cloudinary:cloudinary-android:2.1.0")
+    implementation("com.google.android.gms:play-services-auth:21.1.0")
+
 }

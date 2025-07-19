@@ -1,4 +1,9 @@
 package com.example.touristguide.data.model
 
-// Placeholder for Transport data model
-class Transport 
+data class Transport(
+    val id: String,
+    val type: String,
+    val name: String?,
+    val rating: Double? = null,
+    val price: Double? = null
+) 

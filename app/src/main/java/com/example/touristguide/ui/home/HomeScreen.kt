@@ -36,6 +36,23 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.touristguide.viewmodel.AuthViewModel
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.collectAsState
+import com.example.touristguide.data.model.User
+import android.util.Log
+import com.example.touristguide.viewmodel.PlacesViewModel
+import com.example.touristguide.viewmodel.PlacesViewModelFactory
+import com.example.touristguide.data.repository.GeoapifyRepository
+import com.example.touristguide.data.network.GeoapifyApiService
+import retrofit2.Retrofit
+import retrofit2.converter.gson.GsonConverterFactory
+import com.example.touristguide.data.model.PlaceCategory
+import com.example.touristguide.data.model.Place
+import coil.compose.AsyncImage
+import com.example.touristguide.data.network.PixabayService
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateMapOf
 
 data class CategoryItem(
     val label: String, 
@@ -102,28 +119,33 @@ fun CategoryCard(
 }
 
 @Composable
-fun FeaturedDestinationCarousel() {
-    var displayedDestinations by remember { mutableStateOf(allDestinations.take(4)) }
-    var currentOffset by rememberSaveable { mutableIntStateOf(0) }
+fun FeaturedDestinationCarousel(
+    places: List<Place>,
+    onPlaceClick: (Place) -> Unit
+) {
     val listState = rememberLazyListState()
+    var currentOffset by rememberSaveable { mutableIntStateOf(0) }
 
-    // Auto scroll effect
+    // Pixabay setup
+    val pixabayApiKey = "51346711-84695fc7acb617448e6e8b140"
+    val pixabayRetrofit = remember {
+        retrofit2.Retrofit.Builder()
+            .baseUrl("https://pixabay.com/")
+            .addConverterFactory(retrofit2.converter.gson.GsonConverterFactory.create())
+            .build()
+    }
+    val pixabayService = remember { pixabayRetrofit.create(PixabayService::class.java) }
+    val imageCache = remember { mutableStateMapOf<String, String?>() }
+
     LaunchedEffect(currentOffset) {
-        listState.animateScrollToItem(currentOffset)
+        if (places.isNotEmpty())
+            listState.animateScrollToItem(currentOffset)
     }
 
-    // Timer for updating content and scrolling
-    LaunchedEffect(Unit) {
-        while (true) {
-            delay(30000) // Wait for 30 seconds
-            // Update the offset for scrolling
-            currentOffset = (currentOffset + 1) % 4
-
-            // If we've scrolled through all items, shuffle and update content
-            if (currentOffset == 0) {
-                val shuffled = allDestinations.shuffled(Random(System.currentTimeMillis()))
-                displayedDestinations = shuffled.take(4)
-            }
+    LaunchedEffect(places) {
+        while (places.isNotEmpty()) {
+            delay(30000)
+            currentOffset = (currentOffset + 1) % places.size.coerceAtLeast(1)
         }
     }
 
@@ -134,51 +156,73 @@ fun FeaturedDestinationCarousel() {
             horizontalArrangement = Arrangement.spacedBy(16.dp),
             contentPadding = PaddingValues(horizontal = 16.dp)
         ) {
-            items(displayedDestinations.size) { index ->
-                val destination = displayedDestinations[index]
+            items(places.size) { index ->
+                val place = places[index]
+                val imageUrl = imageCache[place.name]
+                LaunchedEffect(place.name) {
+                    if (imageUrl == null && !imageCache.containsKey(place.name)) {
+                        try {
+                            val query = buildString {
+                                append(place.name ?: "")
+                                if (!place.category.displayName.isNullOrBlank()) {
+                                    append(" ")
+                                    append(place.category.displayName)
+                                }
+                                append(" Nepal")
+                            }
+                            val response = withContext(Dispatchers.IO) {
+                                pixabayService.searchImages(
+                                    apiKey = pixabayApiKey,
+                                    query = query
+                                )
+                            }
+                            val url = response.hits.firstOrNull()?.webformatURL
+                            imageCache[place.name ?: ""] = url
+                        } catch (e: Exception) {
+                            imageCache[place.name ?: ""] = null
+                        }
+                    }
+                }
                 Card(
                     shape = RoundedCornerShape(16.dp),
                     colors = CardDefaults.cardColors(containerColor = Color(0xFFE1F5FE)),
-                    modifier = Modifier.width(300.dp)
+                    modifier = Modifier
+                        .width(300.dp)
+                        .clickable { onPlaceClick(place) }
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        Box {
+                        if (imageUrl != null) {
+                            AsyncImage(
+                                model = imageUrl,
+                                contentDescription = place.name,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(150.dp),
+                                contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                            )
+                        } else {
                             Image(
-                                painter = painterResource(id = destination.imageRes),
-                                contentDescription = destination.title,
+                                painter = painterResource(id = R.drawable.mountain),
+                                contentDescription = place.name,
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(150.dp)
                             )
-                            if (destination.isNew) {
-                                Text(
-                                    text = "New",
-                                    color = Color.White,
-                                    fontSize = 12.sp,
-                                    modifier = Modifier
-                                        .background(Color.Red, shape = RoundedCornerShape(4.dp))
-                                        .padding(horizontal = 8.dp, vertical = 4.dp)
-                                        .align(Alignment.TopStart)
-                                        .padding(6.dp)
-                                )
-                            }
                         }
                         Spacer(modifier = Modifier.height(8.dp))
-                        Text(destination.title, fontWeight = FontWeight.Bold)
-                        Text(destination.price, color = Color.Gray)
+                        Text(place.name ?: "Unknown", fontWeight = FontWeight.Bold)
+                        Text(place.address ?: "", color = Color.Gray)
                     }
                 }
             }
         }
-
-        // Scroll indicators
         Row(
             modifier = Modifier
                 .padding(top = 8.dp)
                 .fillMaxWidth(),
             horizontalArrangement = Arrangement.Center
         ) {
-            repeat(4) { index ->
+            repeat(places.size) { index ->
                 Box(
                     modifier = Modifier
                         .padding(horizontal = 4.dp)
@@ -196,8 +240,31 @@ fun FeaturedDestinationCarousel() {
 
 @Composable
 fun HomeScreen(navController: NavController, viewModel: AuthViewModel = androidx.lifecycle.viewmodel.compose.viewModel<AuthViewModel>()) {
+    val user by viewModel.user.collectAsState()
     val userName by viewModel.userName.collectAsState("")
-    LaunchedEffect(Unit) { viewModel.fetchUserName() }
+    LaunchedEffect(user, userName) {
+        Log.d("HomeScreen", "user: $user, userName: $userName")
+    }
+    LaunchedEffect(Unit) { viewModel.fetchUser() }
+
+    // --- Inject PlacesViewModel for featured destinations ---
+    val retrofit = remember {
+        Retrofit.Builder()
+            .baseUrl("https://api.geoapify.com/")
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+    }
+    val geoapifyService = remember { retrofit.create(GeoapifyApiService::class.java) }
+    val apiKey = "6acbf75b57b74b749fd87b61351b7c77" // <-- Replace with your actual API key
+    val repository = remember { GeoapifyRepository(geoapifyService, apiKey) }
+    val factory = remember { PlacesViewModelFactory(repository, PlaceCategory.TOURIST_ATTRACTIONS) }
+    val placesViewModel: PlacesViewModel = androidx.lifecycle.viewmodel.compose.viewModel(factory = factory)
+    // Fetch places on first load
+    LaunchedEffect(Unit) {
+        placesViewModel.fetchInitialPlaces(28.3949, 84.1240, 50000)
+    }
+    val featuredPlaces = placesViewModel.searchResults.value.take(4)
+
     Scaffold(
         bottomBar = { CommonBottomBar(navController = navController) }
     ) { padding ->
@@ -209,23 +276,12 @@ fun HomeScreen(navController: NavController, viewModel: AuthViewModel = androidx
                 .verticalScroll(rememberScrollState())
         ) {
             Text(
-                text = "Welcome to Nepal, ${if (userName.isNotBlank()) userName else "User"}!",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold
+                text = user?.let { "Welcome, ${it.firstName} ${it.lastName}".trim() } ?: "Welcome, $userName",
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.padding(16.dp)
             )
 
             Spacer(modifier = Modifier.height(12.dp))
-
-            OutlinedTextField(
-                value = "",
-                onValueChange = {},
-                placeholder = { Text("Search places, food, hotels...") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                shape = RoundedCornerShape(16.dp)
-            )
-
-            Spacer(modifier = Modifier.height(20.dp))
 
             Text("Quick Categories", fontWeight = FontWeight.SemiBold)
             Spacer(modifier = Modifier.height(12.dp))
@@ -262,7 +318,12 @@ fun HomeScreen(navController: NavController, viewModel: AuthViewModel = androidx
             Text("Explore our top picks", fontSize = 13.sp, color = Color.Gray)
             Spacer(modifier = Modifier.height(8.dp))
 
-            FeaturedDestinationCarousel()
+            FeaturedDestinationCarousel(
+                places = featuredPlaces,
+                onPlaceClick = { place ->
+                    navController.navigate("places?placeName=" + java.net.URLEncoder.encode(place.name ?: "", "UTF-8"))
+                }
+            )
         }
     }
 }
