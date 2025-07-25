@@ -25,6 +25,7 @@ class BookmarksViewModel : ViewModel() {
                 override fun onDataChange(snapshot: DataSnapshot) {
                     val list = mutableListOf<BookmarkedItem>()
                     for (child in snapshot.children) {
+                        val id = child.key ?: ""
                         val name = child.child("name").getValue(String::class.java) ?: ""
                         val address = child.child("address").getValue(String::class.java)
                         val details = child.child("details").getValue(String::class.java)
@@ -39,11 +40,11 @@ class BookmarksViewModel : ViewModel() {
                             child.ref.child("address").setValue(details)
                             child.ref.child("details").removeValue()
                             android.util.Log.d("BookmarksVM", "Migrated bookmark: name=$name, details->$details")
-                            list.add(BookmarkedItem(type, name, details))
+                            list.add(BookmarkedItem(id, type, name, details))
                         } else {
-                            list.add(BookmarkedItem(type, name, address ?: ""))
+                            list.add(BookmarkedItem(id, type, name, address ?: ""))
                         }
-                        android.util.Log.d("BookmarksVM", "Fetched: name=$name, address=${address ?: details}, type=$typeStr")
+                        android.util.Log.d("BookmarksVM", "Fetched: id=$id, name=$name, address=${address ?: details}, type=$typeStr")
                     }
                     _bookmarks.value = list
                 }
@@ -57,17 +58,19 @@ class BookmarksViewModel : ViewModel() {
 
     fun removeBookmark(bookmark: BookmarkedItem) {
         userId?.let { uid ->
-            dbRef.child(uid).child("bookmarks").get().addOnSuccessListener { snapshot ->
-                for (child in snapshot.children) {
-                    val typeStr = child.child("type").getValue(String::class.java)
-                    val name = child.child("name").getValue(String::class.java)
-                    val address = child.child("address").getValue(String::class.java)
-                    if (typeStr == bookmark.type.name && name == bookmark.name && address == bookmark.details) {
-                        child.ref.removeValue()
-                        break
-                    }
-                }
-            }
+            dbRef.child(uid).child("bookmarks").child(bookmark.id).removeValue()
         }
     }
-} 
+
+    fun addBookmark(bookmark: BookmarkedItem) {
+        userId?.let { uid ->
+            val key = dbRef.child(uid).child("bookmarks").push().key ?: return
+            val bookmarkData = mapOf(
+                "type" to bookmark.type.name,
+                "name" to bookmark.name,
+                "address" to bookmark.details
+            )
+            dbRef.child(uid).child("bookmarks").child(key).setValue(bookmarkData)
+        }
+    }
+}

@@ -26,18 +26,16 @@ class TransportViewModel : ViewModel() {
     private val repository = GeoapifyRepository(apiService, apiKey)
 
     val filterOptions = listOf(
-        "All", "Bus", "Taxi", "Parking", "Rental", "Fuel", "Airport"
+        "Bus", "Taxi", "Parking", "Fuel", "Airport"
     )
     private val filterToCategory = mapOf(
-        "All" to "public_transport.bus,service.taxi,service.vehicle.parking,service.vehicle.rental,service.vehicle.fuel,aeroway.aerodrome",
         "Bus" to "public_transport.bus",
         "Taxi" to "service.taxi",
         "Parking" to "service.vehicle.parking",
-        "Rental" to "service.vehicle.rental",
         "Fuel" to "service.vehicle.fuel",
         "Airport" to "aeroway.aerodrome"
     )
-    private val _selectedFilter = MutableStateFlow("All")
+    private val _selectedFilter = MutableStateFlow("Bus")
     val selectedFilter: StateFlow<String> = _selectedFilter
 
     private val _places = MutableStateFlow<List<Place>>(emptyList())
@@ -177,23 +175,19 @@ class TransportViewModel : ViewModel() {
                     if (imageUrl != null) {
                         place.copy(imageUrl = imageUrl)
                     } else {
-                        val query = buildString {
-                            append(place.name.orEmpty())
-                            append(" Transport Nepal")
-                        }
-                        val url = withContext(Dispatchers.IO) {
+                        val query = withContext(Dispatchers.IO) {
                             try {
                                 val response = pixabayService.searchImages(
                                     apiKey = pixabayApiKey,
-                                    query = query
+                                    query = "${place.name} Transport Nepal"
                                 )
                                 response.hits.firstOrNull()?.webformatURL
                             } catch (e: Exception) {
                                 null
                             }
                         }
-                        imageCache[place.name.orEmpty()] = url
-                        place.copy(imageUrl = url)
+                        imageCache[place.name.orEmpty()] = query
+                        place.copy(imageUrl = query)
                     }
                 }
                 _places.value = placesWithImages
