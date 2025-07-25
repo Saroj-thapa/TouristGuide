@@ -1,5 +1,6 @@
 package com.example.touristguide.ui.screen
 
+import android.widget.Toast
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -13,6 +14,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -24,12 +26,21 @@ import androidx.navigation.compose.rememberNavController
 import com.example.touristguide.ui.theme.TouristGuideTheme
 import com.example.touristguide.ui.components.CommonTopBar
 import com.example.touristguide.ui.components.CommonBottomBar
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.touristguide.viewmodel.BookmarksViewModel
+import com.example.touristguide.ui.screen.BookmarkType
+import com.example.touristguide.ui.screen.BookmarkedItem
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun BudgetScreen(navController: NavController) {
     var days by remember { mutableStateOf("") }
     var people by remember { mutableStateOf("") }
+    var estimatedCost by remember { mutableStateOf<Int?>(null) }
+    var selectedPlace by remember { mutableStateOf("") }
+
+    val bookmarksViewModel: BookmarksViewModel = viewModel()
+    val context = LocalContext.current
 
     Scaffold(
         topBar = {
@@ -92,23 +103,34 @@ fun BudgetScreen(navController: NavController) {
             FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf("Pokhara", "Kathmandu", "Mustang").forEach { place ->
                     AssistChip(
-                        onClick = {},
+                        onClick = { selectedPlace = place },
                         label = { Text(place) },
                         shape = RoundedCornerShape(10.dp),
                         colors = AssistChipDefaults.assistChipColors(
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer
+                            containerColor = if (selectedPlace == place) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondaryContainer,
+                            labelColor = if (selectedPlace == place) Color.White else MaterialTheme.colorScheme.onSecondaryContainer
                         )
                     )
                 }
             }
 
             Button(
-                onClick = { /* Estimate Logic */ },
+                onClick = {
+                    val d = days.toIntOrNull() ?: 0
+                    val p = people.toIntOrNull() ?: 0
+                    val (foodPerDay, stayPerDay, transportPerDay) = when (selectedPlace) {
+                        "Kathmandu" -> Triple(400, 900, 1800)
+                        "Pokhara" -> Triple(500, 1000, 2200)
+                        "Mustang" -> Triple(700, 1800, 3500)
+                        else -> Triple(533, 1233, 2500) // Average price if no place selected
+                    }
+                    estimatedCost = if (d > 0 && p > 0) (foodPerDay + stayPerDay + transportPerDay) * d * p else null
+                },
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
             ) {
-                Text("💰 Estimate Cost", color = Color.White)
+                Text("\uD83D\uDCB0 Estimate Cost", color = Color.White)
             }
 
             HorizontalDivider(thickness = 1.dp)
@@ -119,10 +141,12 @@ fun BudgetScreen(navController: NavController) {
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
             ) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("📦 Estimated Costs", style = MaterialTheme.typography.titleMedium)
-                    Text("🍽️ Food: Rs. 10,500", style = MaterialTheme.typography.bodyLarge)
-                    Text("🏨 Stay: Rs. 15,000", style = MaterialTheme.typography.bodyLarge)
-                    Text("🚌 Transport: Rs. 33,000", style = MaterialTheme.typography.bodyLarge)
+                    Text("\uD83D\uDCE6 Estimated Costs", style = MaterialTheme.typography.titleMedium)
+                    if (estimatedCost != null) {
+                        Text("Total Estimated Cost: Rs. ${estimatedCost}", style = MaterialTheme.typography.bodyLarge)
+                    } else {
+                        Text("Enter trip duration and number of travelers, then press Estimate Cost.", style = MaterialTheme.typography.bodyLarge)
+                    }
                 }
             }
 
@@ -130,21 +154,26 @@ fun BudgetScreen(navController: NavController) {
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                OutlinedButton(
-                    onClick = {},
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Text("📴 Offline Mode")
-                }
-
                 Button(
-                    onClick = {},
+                    onClick = {
+                        if (estimatedCost != null) {
+                            val name = if (selectedPlace.isNotEmpty()) selectedPlace else "Custom Trip"
+                            val details = "Days: $days, Travelers: $people, Cost: Rs. $estimatedCost"
+                            bookmarksViewModel.addBookmark(
+                                BookmarkedItem(
+                                    id = "", // id will be generated in ViewModel
+                                    type = BookmarkType.BUDGET,
+                                    name = name,
+                                    details = details
+                                )
+                            )
+                        }
+                    },
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
                 ) {
-                    Text("💾 Save Estimate", color = Color.White)
+                    Text("\uD83D\uDCBE Save Estimate", color = Color.White)
                 }
             }
         }

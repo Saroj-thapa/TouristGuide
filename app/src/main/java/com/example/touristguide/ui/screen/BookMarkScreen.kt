@@ -30,11 +30,12 @@ import kotlinx.coroutines.launch
 import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material.icons.filled.LocalHospital
 import androidx.compose.material.icons.filled.DirectionsBus
+import androidx.compose.material.icons.filled.Money
 
 // Types of bookmarks
-enum class BookmarkType { PLACE, TREKKING_ROUTE, HOTEL, FOOD, HOSPITAL, TRANSPORTATION }
+enum class BookmarkType { PLACE, TREKKING_ROUTE, HOTEL, FOOD, HOSPITAL, TRANSPORTATION, BUDGET }
 
-data class BookmarkedItem(val type: BookmarkType, val name: String, val details: String)
+data class BookmarkedItem(val id: String, val type: BookmarkType, val name: String, val details: String)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -107,13 +108,14 @@ fun BookMarkScreen(bookmarks: List<BookmarkedItem>, navController: NavController
                                             BookmarkType.FOOD -> "Food"
                                             BookmarkType.HOSPITAL -> "Hospitals"
                                             BookmarkType.TRANSPORTATION -> "Transportation"
+                                            BookmarkType.BUDGET -> "Budgets"
                                         },
                                         style = MaterialTheme.typography.titleMedium,
                                         color = MaterialTheme.colorScheme.primary,
                                         modifier = Modifier.padding(vertical = 8.dp)
                                     )
                                 }
-                                items(items, key = { it.hashCode() }) { item ->
+                                items(items, key = { it.id }) { item ->
                                     Card(
                                         modifier = Modifier
                                             .fillMaxWidth()
@@ -138,6 +140,7 @@ fun BookMarkScreen(bookmarks: List<BookmarkedItem>, navController: NavController
                                                     BookmarkType.FOOD -> Icons.Filled.Restaurant
                                                     BookmarkType.HOSPITAL -> Icons.Filled.LocalHospital
                                                     BookmarkType.TRANSPORTATION -> Icons.Filled.DirectionsBus
+                                                    BookmarkType.BUDGET -> Icons.Filled.Bookmark // Use a valid icon for BUDGET
                                                 },
                                                 contentDescription = null,
                                                 tint = MaterialTheme.colorScheme.primary,
